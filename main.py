@@ -84,10 +84,14 @@ class StatefulModel(PreTrainedModel):
     def load_state(self, path: str) -> None:
         raise NotImplementedError
 
-    def combine_states(self, state1: MambaCache, state2: MambaCache) -> MambaCache:
+    def combine_states(
+        self, states: list[MambaCache], weights: Optional[list[float]] = None
+    ) -> MambaCache:
         # Check compatibility
 
         # Combine states
+        if weights is None:
+            weights = [1 / len(states)] * len(states)
         raise NotImplementedError
 
     def update_state(self, state: MambaCache) -> None:
@@ -99,6 +103,9 @@ class StatefulModel(PreTrainedModel):
     def reset_state_offset(self, state: MambaCache) -> MambaCache:
         state.seqlen_offset = 0
         return state
+
+    def rag_generate(self, input_str: str) -> str:
+        raise NotImplementedError
 
 
 if __name__ == "__main__":

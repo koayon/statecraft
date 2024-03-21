@@ -51,6 +51,17 @@ class StatefulModel(PreTrainedModel):
         )
         return out
 
+    @classmethod
+    def from_pretrained(
+        cls,
+        model_name: str,
+        initial_state: Optional[MambaCache] = None,
+        device: Optional[str] = None,
+    ) -> "StatefulModel":
+        model: MambaForCausalLM = MambaForCausalLM.from_pretrained(model_name)  # type: ignore
+        stateful_model = cls(model=model, initial_state=initial_state)
+        return stateful_model
+
     def build_state(
         self,
         input_ids: t.Tensor,
@@ -67,6 +78,7 @@ class StatefulModel(PreTrainedModel):
         raise NotImplementedError
 
     def upload_state(self, state: MambaCache) -> None:
+        # Make API call
         raise NotImplementedError
 
     def load_state(self, path: str) -> None:
@@ -91,7 +103,8 @@ class StatefulModel(PreTrainedModel):
 
 if __name__ == "__main__":
     # Set up
-    stateless_model = MambaForCausalLM(MambaConfig())
+    # stateless_model = MambaForCausalLM(MambaConfig())
+    stateless_model: MambaForCausalLM = MambaForCausalLM.from_pretrained("state-spaces/mamba-130m-hf")  # type: ignore
     tokeniser = AutoTokenizer.from_pretrained("state-spaces/mamba-130m-hf")
     input_ids: t.Tensor = tokeniser("Hey how are you doing?", return_tensors="pt")[  # type: ignore
         "input_ids"
@@ -114,3 +127,10 @@ if __name__ == "__main__":
     print(saved_cache_params.ssm_states[1].shape)
     print("ssm_state", saved_cache_params.ssm_states[0])
     print("output", out.logits[0, -1, :])
+
+    # StatefulModel with initial state
+    stateful_model = StatefulModel.from_pretrained(
+        model_name="state-spaces/mamba-130m-hf",
+        initial_state=saved_cache_params,
+    )
+    print(stateful_model)

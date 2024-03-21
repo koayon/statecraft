@@ -1,4 +1,6 @@
-from typing import Optional
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Optional, Union
 
 import torch as t
 from transformers import (
@@ -9,6 +11,14 @@ from transformers import (
     PreTrainedModel,
 )
 from transformers.models.mamba.modeling_mamba import MambaCache, MambaCausalLMOutput
+
+
+@dataclass
+class SSMStateMetadata:
+    prompt: str
+    description: str
+    keywords: Optional[list[str]] = None
+    model_name: str = "state-spaces/mamba-130m-hf"
 
 
 class StatefulModel(PreTrainedModel):
@@ -56,14 +66,23 @@ class StatefulModel(PreTrainedModel):
     def save_state(self, state: MambaCache) -> None:
         raise NotImplementedError
 
-    def load_state(self) -> None:
+    def upload_state(self, state: MambaCache) -> None:
+        raise NotImplementedError
+
+    def load_state(self, path: str) -> None:
         raise NotImplementedError
 
     def combine_states(self, state1: MambaCache, state2: MambaCache) -> MambaCache:
+        # Check compatibility
+
+        # Combine states
         raise NotImplementedError
 
     def update_state(self, state: MambaCache) -> None:
         self.initial_state = state
+
+    def check_state_compatible(self, state: MambaCache) -> bool:
+        raise NotImplementedError
 
     def reset_state_offset(self, state: MambaCache) -> MambaCache:
         state.seqlen_offset = 0

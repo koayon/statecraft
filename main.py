@@ -137,8 +137,6 @@ class StatefulModel(PreTrainedModel):
 
         print(f"State loaded from {base_path}")
 
-        # TODO: Check exactly how state is stored to load it in here.
-
     def combine_states(
         self, states: list[MambaCache], weights: Optional[list[float]] = None
     ) -> MambaCache:
@@ -226,27 +224,6 @@ if __name__ == "__main__":
         model_name="state-spaces/mamba-130m-hf",
         initial_state=None,
     )
+
     # test_saving_state()
-
     test_loading_state()
-
-    # tokeniser = AutoTokenizer.from_pretrained("state-spaces/mamba-130m-hf")
-    # input_ids: t.Tensor = tokeniser("Hey how are you doing?", return_tensors="pt")[  # type: ignore
-    #     "input_ids"
-    # ]
-    # model = StatefulModel.from_pretrained(
-    #     model_name="state-spaces/mamba-130m-hf",
-    #     initial_state=None,
-    # )
-    # generated_state = model.build_state(input_ids=input_ids, save_state=False)
-    # model.save_state(
-    #     state=generated_state,
-    #     path="test",
-    #     metadata=SSMStateMetadata(prompt="Hey how are you doing?", description="Test"),
-    # )
-
-    # a = t.tensor(1)
-    # # Save the tensor a to a file named 'a.pt'
-    # t.save(a, "a.pt")
-    # # Load tensor b from the file named 'a.pt'
-    # b = t.load("a.pt")

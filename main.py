@@ -1,4 +1,6 @@
-from dataclasses import dataclass
+import json
+import os
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Optional, Union
 
@@ -20,6 +22,9 @@ class SSMStateMetadata:
     keywords: Optional[list[str]] = None
     model_name: str = "state-spaces/mamba-130m-hf"
 
+    def to_dict(self):
+        return asdict(self)
+
 
 class StatefulModel(PreTrainedModel):
     def __init__(
@@ -31,7 +36,7 @@ class StatefulModel(PreTrainedModel):
         super().__init__(model.config)
         if initial_state is None:
             initial_state = MambaCache(config=model.config, batch_size=1, device=device)
-        self.initial_state = initial_state
+        self.initial_state: MambaCache = initial_state
         self.model = model
 
     def forward(
@@ -71,18 +76,68 @@ class StatefulModel(PreTrainedModel):
         out: MambaCausalLMOutput = self.forward(input_ids=input_ids, cache_params=cache_params)
         assert out.cache_params is not None
         if save_state:
-            self.save_state(out.cache_params)
+            pass
         return out.cache_params
 
-    def save_state(self, state: MambaCache) -> None:
-        raise NotImplementedError
+    def get_default_cache_dir(self) -> str:
+        if os.name == "posix":  # For Linux and macOS
+            return os.path.expanduser("~/.cache/statecraft/")
+        elif os.name == "nt":  # For Windows
+            username = getpass.getuser()
+            return os.path.expanduser(rf"C:\Users\{username}\.cache\statecraft")
+        else:
+            raise ValueError(f"Unsupported operating system: {os.name}")
+
+    def save_state(
+        self,
+        state: MambaCache,
+        path: Union[Path, str],
+        metadata: SSMStateMetadata,
+        cache_dir: Optional[str] = None,
+    ) -> None:
+        if cache_dir is None:
+            cache_dir = self.get_default_cache_dir()
+        # Create path to save_location
+        base_path = os.path.join(cache_dir, Path(path))
+        # Create the cache directory if it doesn't exist
+        os.makedirs(base_path, exist_ok=True)
+
+        state_path = os.path.join(base_path, "state.pt")
+        metadata_path = os.path.join(base_path, "metadata.json")
+        # Save state
+        t.save(state, state_path)
+        print(f"State saved to {state_path}")
+
+        # Save metadata as json file
+        with open(metadata_path, "w") as json_file:
+            json.dump(metadata.to_dict(), json_file)
+        print(f"Metadata saved to {metadata_path}")
 
     def upload_state(self, state: MambaCache) -> None:
         # Make API call
         raise NotImplementedError
 
-    def load_state(self, path: str) -> None:
-        raise NotImplementedError
+    def load_local_state(
+        self, saved_state_path: Union[str, Path], cache_dir: Optional[str] = None
+    ) -> None:
+        if cache_dir is None:
+            cache_dir = self.get_default_cache_dir()
+        base_path = os.path.join(cache_dir, Path(saved_state_path))
+        is_local = os.path.isdir(base_path)
+        if not is_local:
+            raise ValueError(
+                "Path to saved state must be a directory which exists on the system"
+            )
+        state = t.load(os.path.join(base_path, "state.pt"))
+        with open(os.path.join(base_path, "metadata.json"), "r") as json_file:
+            metadata_dict = json.load(json_file)
+
+        print("Metadata", metadata_dict)
+        self.initial_state = state
+
+        print(f"State loaded from {base_path}")
+
+        # TODO: Check exactly how state is stored to load it in here.
 
     def combine_states(
         self, states: list[MambaCache], weights: Optional[list[float]] = None
@@ -108,7 +163,7 @@ class StatefulModel(PreTrainedModel):
         raise NotImplementedError
 
 
-if __name__ == "__main__":
+def main():
     # Set up
     # stateless_model = MambaForCausalLM(MambaConfig())
     stateless_model: MambaForCausalLM = MambaForCausalLM.from_pretrained("state-spaces/mamba-130m-hf")  # type: ignore
@@ -141,3 +196,57 @@ if __name__ == "__main__":
         initial_state=saved_cache_params,
     )
     print(stateful_model)
+
+
+def test_saving_state():
+    generated_state = model.build_state(input_ids=input_ids, save_state=False)
+    model.save_state(
+        state=generated_state,
+        path="test",
+        metadata=SSMStateMetadata(prompt="Hey how are you doing?", description="Test"),
+    )
+
+
+def test_loading_state():
+    print(model.initial_state.ssm_states[0].shape)
+    print("Previous state", model.initial_state.ssm_states[0][0])
+    model.load_local_state(
+        saved_state_path="test",
+    )
+    print(model.initial_state.ssm_states[0].shape)
+    print("After state", model.initial_state.ssm_states[0][0])
+
+
+if __name__ == "__main__":
+    tokeniser = AutoTokenizer.from_pretrained("state-spaces/mamba-130m-hf")
+    input_ids: t.Tensor = tokeniser("Hey how are you doing?", return_tensors="pt")[  # type: ignore
+        "input_ids"
+    ]
+    model = StatefulModel.from_pretrained(
+        model_name="state-spaces/mamba-130m-hf",
+        initial_state=None,
+    )
+    # test_saving_state()
+
+    test_loading_state()
+
+    # tokeniser = AutoTokenizer.from_pretrained("state-spaces/mamba-130m-hf")
+    # input_ids: t.Tensor = tokeniser("Hey how are you doing?", return_tensors="pt")[  # type: ignore
+    #     "input_ids"
+    # ]
+    # model = StatefulModel.from_pretrained(
+    #     model_name="state-spaces/mamba-130m-hf",
+    #     initial_state=None,
+    # )
+    # generated_state = model.build_state(input_ids=input_ids, save_state=False)
+    # model.save_state(
+    #     state=generated_state,
+    #     path="test",
+    #     metadata=SSMStateMetadata(prompt="Hey how are you doing?", description="Test"),
+    # )
+
+    # a = t.tensor(1)
+    # # Save the tensor a to a file named 'a.pt'
+    # t.save(a, "a.pt")
+    # # Load tensor b from the file named 'a.pt'
+    # b = t.load("a.pt")

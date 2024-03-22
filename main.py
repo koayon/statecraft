@@ -5,13 +5,7 @@ from pathlib import Path
 from typing import Optional, Union
 
 import torch as t
-from transformers import (
-    AutoTokenizer,
-    MambaConfig,
-    MambaForCausalLM,
-    PretrainedConfig,
-    PreTrainedModel,
-)
+from transformers import AutoTokenizer, MambaForCausalLM, PreTrainedModel
 from transformers.models.mamba.modeling_mamba import MambaCache, MambaCausalLMOutput
 
 
@@ -49,7 +43,7 @@ class StatefulModel(PreTrainedModel):
         if cache_params is None:
             cache_params = self.initial_state
         if reset_sequence_offset:
-            cache_params = self.reset_state_offset(cache_params)
+            cache_params = self._reset_state_offset(cache_params)
 
         out: MambaCausalLMOutput = self.model(
             input_ids=input_ids, cache_params=cache_params, use_cache=True
@@ -79,15 +73,6 @@ class StatefulModel(PreTrainedModel):
             pass
         return out.cache_params
 
-    def get_default_cache_dir(self) -> str:
-        if os.name == "posix":  # For Linux and macOS
-            return os.path.expanduser("~/.cache/statecraft/")
-        elif os.name == "nt":  # For Windows
-            username = getpass.getuser()
-            return os.path.expanduser(rf"C:\Users\{username}\.cache\statecraft")
-        else:
-            raise ValueError(f"Unsupported operating system: {os.name}")
-
     def save_state(
         self,
         state: MambaCache,
@@ -96,7 +81,7 @@ class StatefulModel(PreTrainedModel):
         cache_dir: Optional[str] = None,
     ) -> None:
         if cache_dir is None:
-            cache_dir = self.get_default_cache_dir()
+            cache_dir = self._get_default_cache_dir()
         # Create path to save_location
         base_path = os.path.join(cache_dir, Path(path))
         # Create the cache directory if it doesn't exist
@@ -113,15 +98,11 @@ class StatefulModel(PreTrainedModel):
             json.dump(metadata.to_dict(), json_file)
         print(f"Metadata saved to {metadata_path}")
 
-    def upload_state(self, state: MambaCache) -> None:
-        # Make API call
-        raise NotImplementedError
-
     def load_local_state(
         self, saved_state_path: Union[str, Path], cache_dir: Optional[str] = None
     ) -> None:
         if cache_dir is None:
-            cache_dir = self.get_default_cache_dir()
+            cache_dir = self._get_default_cache_dir()
         base_path = os.path.join(cache_dir, Path(saved_state_path))
         is_local = os.path.isdir(base_path)
         if not is_local:
@@ -137,10 +118,19 @@ class StatefulModel(PreTrainedModel):
 
         print(f"State loaded from {base_path}")
 
+    @classmethod
+    def upload_state(cls, file_location: str) -> None:
+        # Make API call
+        raise NotImplementedError
+
+    def download_state(self, path: str) -> MambaCache:
+        # Make API call
+        raise NotImplementedError
+
     def combine_states(
         self, states: list[MambaCache], weights: Optional[list[float]] = None
     ) -> MambaCache:
-        # Check compatibility
+        # TODO: Check compatibility
 
         # Combine states
         if weights is None:
@@ -150,10 +140,19 @@ class StatefulModel(PreTrainedModel):
     def update_state(self, state: MambaCache) -> None:
         self.initial_state = state
 
-    def check_state_compatible(self, state: MambaCache) -> bool:
+    def _get_default_cache_dir(self) -> str:
+        if os.name == "posix":  # For Linux and macOS
+            return os.path.expanduser("~/.cache/statecraft/")
+        elif os.name == "nt":  # For Windows
+            username = getpass.getuser()
+            return os.path.expanduser(rf"C:\Users\{username}\.cache\statecraft")
+        else:
+            raise ValueError(f"Unsupported operating system: {os.name}")
+
+    def _check_state_compatible(self, state: MambaCache) -> bool:
         raise NotImplementedError
 
-    def reset_state_offset(self, state: MambaCache) -> MambaCache:
+    def _reset_state_offset(self, state: MambaCache) -> MambaCache:
         state.seqlen_offset = 0
         return state
 

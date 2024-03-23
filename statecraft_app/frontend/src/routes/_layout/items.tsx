@@ -59,9 +59,10 @@ function Items() {
               <Table size={{ base: 'sm', md: 'md' }}>
                 <Thead>
                   <Tr>
-                    <Th>ID</Th>
                     <Th>Title</Th>
+                    <Th>Model</Th>
                     <Th>Description</Th>
+                    <Th>Prompt</Th>
                     <Th>Actions</Th>
                   </Tr>
                 </Thead>
@@ -72,6 +73,9 @@ function Items() {
                       <Td>{item.title}</Td>
                       <Td color={!item.description ? 'gray.400' : 'inherit'}>
                         {item.description || 'N/A'}
+                      </Td>
+                      <Td color={!item.prompt ? 'gray.400' : 'inherit'}>
+                        {item.prompt || 'N/A'}
                       </Td>
                       <Td>
                         <ActionsMenu type={'Item'} value={item} />

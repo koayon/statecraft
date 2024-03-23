@@ -1,8 +1,7 @@
 from app.core.config import settings
+from app.tests.utils.state import create_random_state
 from fastapi.testclient import TestClient
 from sqlmodel import Session
-
-from statecraft_app.backend.app.tests.utils.state import create_random_state
 
 
 def test_create_state(

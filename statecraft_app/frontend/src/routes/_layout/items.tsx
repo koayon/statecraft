@@ -74,9 +74,10 @@ function Items() {
                       <Td color={!item.description ? 'gray.400' : 'inherit'}>
                         {item.description || 'N/A'}
                       </Td>
-                      <Td color={!item.prompt ? 'gray.400' : 'inherit'}>
+                      {/* <Td color={!item.prompt ? 'gray.400' : 'inherit'}>
                         {item.prompt || 'N/A'}
-                      </Td>
+                      </Td> */}
+                      <Td>Prompt Goes Here</Td>
                       <Td>
                         <ActionsMenu type={'Item'} value={item} />
                       </Td>

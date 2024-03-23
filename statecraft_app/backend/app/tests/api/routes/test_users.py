@@ -1,11 +1,10 @@
-from fastapi.testclient import TestClient
-from pytest_mock import MockerFixture
-from sqlmodel import Session
-
 from app import crud
 from app.core.config import settings
 from app.models import UserCreate
 from app.tests.utils.utils import random_email, random_lower_string
+from fastapi.testclient import TestClient
+from pytest_mock import MockerFixture
+from sqlmodel import Session
 
 
 def test_get_users_superuser_me(
@@ -162,8 +161,8 @@ def test_retrieve_users(
 
     assert len(all_users["data"]) > 1
     assert "count" in all_users
-    for item in all_users["data"]:
-        assert "email" in item
+    for user in all_users["data"]:
+        assert "email" in user
 
 
 def test_update_user_me(
@@ -260,9 +259,7 @@ def test_update_password_me_same_password_error(
     )
     assert r.status_code == 400
     updated_user = r.json()
-    assert (
-        updated_user["detail"] == "New password cannot be the same as the current one"
-    )
+    assert updated_user["detail"] == "New password cannot be the same as the current one"
 
 
 def test_create_user_open(client: TestClient, mocker: MockerFixture) -> None:
@@ -281,9 +278,7 @@ def test_create_user_open(client: TestClient, mocker: MockerFixture) -> None:
     assert created_user["full_name"] == full_name
 
 
-def test_create_user_open_forbidden_error(
-    client: TestClient, mocker: MockerFixture
-) -> None:
+def test_create_user_open_forbidden_error(client: TestClient, mocker: MockerFixture) -> None:
     mocker.patch("app.core.config.settings.USERS_OPEN_REGISTRATION", False)
     username = random_email()
     password = random_lower_string()

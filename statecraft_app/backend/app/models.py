@@ -44,7 +44,7 @@ class UpdatePassword(SQLModel):
 class User(UserBase, table=True):
     id: int | None = Field(default=None, primary_key=True)
     hashed_password: str
-    items: list["Item"] = Relationship(back_populates="owner")
+    states: list["State"] = Relationship(back_populates="owner")
 
 
 # Properties to return via API, id is always required
@@ -58,37 +58,37 @@ class UsersOut(SQLModel):
 
 
 # Shared properties
-class ItemBase(SQLModel):
+class StateBase(SQLModel):
     title: str
     description: str | None = None
 
 
-# Properties to receive on item creation
-class ItemCreate(ItemBase):
+# Properties to receive on state creation
+class StateCreate(StateBase):
     title: str
 
 
-# Properties to receive on item update
-class ItemUpdate(ItemBase):
+# Properties to receive on state update
+class StateUpdate(StateBase):
     title: str | None = None  # type: ignore
 
 
 # Database model, database table inferred from class name
-class Item(ItemBase, table=True):
+class State(StateBase, table=True):
     id: int | None = Field(default=None, primary_key=True)
     title: str
     owner_id: int | None = Field(default=None, foreign_key="user.id", nullable=False)
-    owner: User | None = Relationship(back_populates="items")
+    owner: User | None = Relationship(back_populates="states")
 
 
 # Properties to return via API, id is always required
-class ItemOut(ItemBase):
+class StateOut(StateBase):
     id: int
     owner_id: int
 
 
-class ItemsOut(SQLModel):
-    data: list[ItemOut]
+class StatesOut(SQLModel):
+    data: list[StateOut]
     count: int
 
 

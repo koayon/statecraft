@@ -14,7 +14,9 @@ from sqlmodel import Session, delete
 @pytest.fixture(scope="session", autouse=True)
 def db() -> Generator[Session, None, None]:
     with Session(engine) as session:
+        print("About to initialise db")
         init_db(session)
+        print("db initialised")
         yield session
         statement = delete(State)
         session.execute(statement)

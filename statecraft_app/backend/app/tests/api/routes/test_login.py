@@ -1,8 +1,7 @@
-from fastapi.testclient import TestClient
-from pytest_mock import MockerFixture
-
 from app.core.config import settings
 from app.utils import generate_password_reset_token
+from fastapi.testclient import TestClient
+from pytest_mock import MockerFixture
 
 
 def test_get_access_token(client: TestClient) -> None:
@@ -26,9 +25,7 @@ def test_get_access_token_incorrect_password(client: TestClient) -> None:
     assert r.status_code == 400
 
 
-def test_use_access_token(
-    client: TestClient, superuser_token_headers: dict[str, str]
-) -> None:
+def test_use_access_token(client: TestClient, superuser_token_headers: dict[str, str]) -> None:
     r = client.post(
         f"{settings.API_V1_STR}/login/test-token",
         headers=superuser_token_headers,
@@ -64,9 +61,7 @@ def test_recovery_password_user_not_exits(
     assert r.status_code == 404
 
 
-def test_reset_password(
-    client: TestClient, superuser_token_headers: dict[str, str]
-) -> None:
+def test_reset_password(client: TestClient, superuser_token_headers: dict[str, str]) -> None:
     token = generate_password_reset_token(email=settings.FIRST_SUPERUSER)
     data = {"new_password": "changethis", "token": token}
     r = client.post(

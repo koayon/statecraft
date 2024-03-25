@@ -23,10 +23,7 @@ classifiers = [
 [tool.poetry.dependencies]
 python = "^3.8"
 python-dotenv = "^0.19.1"
-asyncpg = "^0.27.0"
-psycopg2-binary = "^2.9.3"
 responses = "^0.13.4"
-httpx = "^0.23.0"
 torch = "2.1.2"
 transformers = "4.40.0.dev0"
 

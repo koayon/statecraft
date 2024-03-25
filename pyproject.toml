@@ -1,0 +1,36 @@
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+name = "statecraft"
+version = "0.1.0"
+description = "Store, manage and remix states for SSMs and other Stateful models"
+authors = ["koayon <koayon@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+packages = [{include = "statecraft"}]
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Typing :: Typed",
+]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+python-dotenv = "^0.19.1"
+asyncpg = "^0.27.0"
+psycopg2-binary = "^2.9.3"
+responses = "^0.13.4"
+httpx = "^0.23.0"
+torch = "2.1.2"
+transformers = "4.40.0.dev0"
+
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.3.1"
+pylint = "^2.17.4"

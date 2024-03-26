@@ -14,11 +14,11 @@ from statecraft.types import SSMStateMetadata
 
 
 def get_cached_state(
-    saved_state_path: Union[Path, str], cache_dir: Optional[str] = None
+    saved_state_name: Union[Path, str], model_name: str, cache_dir: Optional[str] = None
 ) -> tuple[MambaCache, SSMStateMetadata, str]:
     if cache_dir is None:
         cache_dir = StatefulModel._get_default_cache_dir()
-    base_path = os.path.join(cache_dir, Path(saved_state_path))
+    base_path = os.path.join(cache_dir, model_name, "CURRENT_USER", Path(saved_state_name))
 
     is_local = os.path.isdir(base_path)
     if not is_local:
@@ -34,13 +34,23 @@ def get_cached_state(
     return state, metadata, base_path
 
 
-def upload_state(path: Union[Path, str]) -> None:
-    state, metadata, base_path = get_cached_state(path)
+def upload_state(path: Union[Path, str], model_name: str) -> None:
+    _state, metadata, base_path = get_cached_state(path, model_name)
+
+    if metadata.model_name != model_name:
+        raise ValueError(
+            "Model name in metadata does not match the model name provided.",
+            f"Model name in metadata: {metadata.model_name}",
+            f"Model name provided: {model_name}",
+        )
+
     print("Uploading state from ", base_path)
     print("Metadata: \n", metadata)
 
+    state_path = os.path.join(base_path, "state.pt")
+
     # Make API call
-    raise NotImplementedError
+    StatecraftClient.upload_state(metadata, state_path)
     # StatecraftClient.upload_state(metadata, state)
 
 
@@ -50,12 +60,14 @@ class StatefulModel(PreTrainedModel):
         model: MambaForCausalLM,
         initial_state: Optional[MambaCache],
         device: Optional[str] = None,
+        model_name: Optional[str] = None,
     ):
         super().__init__(model.config)
         if initial_state is None:
             initial_state = MambaCache(config=model.config, batch_size=1, device=device)
         self.initial_state: MambaCache = initial_state
         self.model = model
+        self.model_name = model_name
 
     def forward(
         self,
@@ -82,7 +94,7 @@ class StatefulModel(PreTrainedModel):
         device: Optional[str] = None,
     ) -> "StatefulModel":
         model: MambaForCausalLM = MambaForCausalLM.from_pretrained(model_name)  # type: ignore
-        stateful_model = cls(model=model, initial_state=initial_state)
+        stateful_model = cls(model=model, initial_state=initial_state, model_name=model_name)
         return stateful_model
 
     def build_state(
@@ -97,22 +109,27 @@ class StatefulModel(PreTrainedModel):
             pass
         return out.cache_params
 
+    @classmethod
     def save_state(
-        self,
+        cls,
         state: MambaCache,
-        path: Union[Path, str],
         metadata: SSMStateMetadata,
+        path: Optional[Union[Path, str]] = None,
         cache_dir: Optional[str] = None,
     ) -> None:
         if cache_dir is None:
-            cache_dir = self._get_default_cache_dir()
+            cache_dir = cls._get_default_cache_dir()
         # Create path to save_location
-        base_path = os.path.join(cache_dir, Path(path))
+        if path is None:
+            path = metadata.state_name
+        base_path = os.path.join(cache_dir, metadata.model_name, "CURRENT_USER", Path(path))
+
         # Create the cache directory if it doesn't exist
         os.makedirs(base_path, exist_ok=True)
 
         state_path = os.path.join(base_path, "state.pt")
         metadata_path = os.path.join(base_path, "metadata.json")
+
         # Save state
         t.save(state, state_path)
         print(f"State saved to {state_path}")
@@ -122,10 +139,33 @@ class StatefulModel(PreTrainedModel):
             json.dump(metadata.to_dict(), json_file)
         print(f"Metadata saved to {metadata_path}")
 
+    def save_current_state(self, state_name: str, prompt: str) -> None:
+        if self.model_name is None:
+            raise ValueError(
+                "Method .save_current_state(...) requires the model_name to be set.",
+                "This happens automatically when using from_pretrained.",
+                "Otherwise you can set it manually or save the state using .save_state(...)",
+            )
+        metadata = SSMStateMetadata(
+            state_name=state_name,
+            prompt=prompt,
+            model_name=self.model_name,
+            description="",
+        )
+        self.save_state(state=self.initial_state, metadata=metadata)
+
     def load_local_state(
         self, saved_state_path: Union[str, Path], cache_dir: Optional[str] = None
     ) -> None:
-        state, metadata, base_path = get_cached_state(saved_state_path, cache_dir)
+        if self.model_name is None:
+            raise ValueError(
+                "Method .load_local_state(...) requires the model_name to be set.",
+                "This happens automatically when using from_pretrained.",
+                "Otherwise you can set it manually",
+            )
+        state, metadata, base_path = get_cached_state(
+            saved_state_path, self.model_name, cache_dir
+        )
 
         print("Metadata: \n", metadata)
         self.initial_state = state

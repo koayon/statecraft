@@ -1,7 +1,6 @@
 import getpass
 import json
 import os
-from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Optional, Union
 
@@ -172,14 +171,34 @@ class StatefulModel(PreTrainedModel):
 
         print(f"State loaded from {base_path}")
 
-    @classmethod
-    def upload_state(cls, file_location: str) -> None:
-        # Make API call
-        raise NotImplementedError
+    def load_state(
+        self, model_name: Optional[str], path: str, cache_dir: Optional[str] = None
+    ) -> None:
+        path_split = path.split("/")
+        if len(path_split) == 1:
+            state_name = path_split[0]
+            self.load_local_state(state_name, cache_dir)
 
-    def download_state(self, path: str) -> MambaCache:
-        # Make API call
-        raise NotImplementedError
+        elif len(path_split) == 2:
+            state_name = path
+            model_name = model_name or self.model_name
+            if model_name is None:
+                raise ValueError(
+                    "Model name must be provided when loading a state from the server."
+                )
+            state_bytes = StatecraftClient.get_state(model_name, state_name)
+            # TODO: Turn bytes into MambaCache
+            # Save MambaCache to cache_dir
+            # Load MambaCache from cache_dir
+
+            raise NotImplementedError
+            state = t.load(full_state_path)
+            self.initial_state = state
+
+        else:
+            raise ValueError(
+                "Invalid path provided. Must be either a local path or a server path."
+            )
 
     def combine_states(
         self, states: list[MambaCache], weights: Optional[list[float]] = None

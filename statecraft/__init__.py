@@ -2,3 +2,4 @@
 
 from statecraft.core import SSMStateMetadata, StatefulModel, upload_state
 from statecraft.local_states import list_local_states
+from statecraft.user_attributes import setup

@@ -340,5 +340,6 @@ if __name__ == "__main__":
     ]
     model = StatefulModel.from_pretrained(
         model_name="state-spaces/mamba-130m-hf",
-        initial_state_name=None,
+        initial_state_name="koayon/test-state",
     )
+    print(model.initial_state.ssm_states[0])

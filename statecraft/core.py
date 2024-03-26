@@ -9,16 +9,39 @@ import torch as t
 from transformers import AutoTokenizer, MambaForCausalLM, PreTrainedModel
 from transformers.models.mamba.modeling_mamba import MambaCache, MambaCausalLMOutput
 
+from statecraft.client import StatecraftClient
+from statecraft.types import SSMStateMetadata
 
-@dataclass
-class SSMStateMetadata:
-    prompt: str
-    description: str
-    keywords: Optional[list[str]] = None
-    model_name: str = "state-spaces/mamba-130m-hf"
 
-    def to_dict(self):
-        return asdict(self)
+def get_cached_state(
+    saved_state_path: Union[Path, str], cache_dir: Optional[str] = None
+) -> tuple[MambaCache, SSMStateMetadata, str]:
+    if cache_dir is None:
+        cache_dir = StatefulModel._get_default_cache_dir()
+    base_path = os.path.join(cache_dir, Path(saved_state_path))
+
+    is_local = os.path.isdir(base_path)
+    if not is_local:
+        raise ValueError("Path to saved state must be a directory which exists on the system")
+
+    state = t.load(os.path.join(base_path, "state.pt"))
+
+    with open(os.path.join(base_path, "metadata.json"), "r") as json_file:
+        metadata_dict = json.load(json_file)
+
+    metadata = SSMStateMetadata(**metadata_dict)
+
+    return state, metadata, base_path
+
+
+def upload_state(path: Union[Path, str]) -> None:
+    state, metadata, base_path = get_cached_state(path)
+    print("Uploading state from ", base_path)
+    print("Metadata: \n", metadata)
+
+    # Make API call
+    raise NotImplementedError
+    # StatecraftClient.upload_state(metadata, state)
 
 
 class StatefulModel(PreTrainedModel):
@@ -102,19 +125,9 @@ class StatefulModel(PreTrainedModel):
     def load_local_state(
         self, saved_state_path: Union[str, Path], cache_dir: Optional[str] = None
     ) -> None:
-        if cache_dir is None:
-            cache_dir = self._get_default_cache_dir()
-        base_path = os.path.join(cache_dir, Path(saved_state_path))
-        is_local = os.path.isdir(base_path)
-        if not is_local:
-            raise ValueError(
-                "Path to saved state must be a directory which exists on the system"
-            )
-        state = t.load(os.path.join(base_path, "state.pt"))
-        with open(os.path.join(base_path, "metadata.json"), "r") as json_file:
-            metadata_dict = json.load(json_file)
+        state, metadata, base_path = get_cached_state(saved_state_path, cache_dir)
 
-        print("Metadata", metadata_dict)
+        print("Metadata: \n", metadata)
         self.initial_state = state
 
         print(f"State loaded from {base_path}")
@@ -141,7 +154,8 @@ class StatefulModel(PreTrainedModel):
     def update_state(self, state: MambaCache) -> None:
         self.initial_state = state
 
-    def _get_default_cache_dir(self) -> str:
+    @classmethod
+    def _get_default_cache_dir(cls) -> str:
         if os.name == "posix":  # For Linux and macOS
             return os.path.expanduser("~/.cache/statecraft/")
         elif os.name == "nt":  # For Windows
@@ -201,7 +215,12 @@ def test_saving_state():
     model.save_state(
         state=generated_state,
         path="test",
-        metadata=SSMStateMetadata(prompt="Hey how are you doing?", description="Test"),
+        metadata=SSMStateMetadata(
+            state_name="test-state",
+            model_name="state_spaces/mamba-130m-hf",
+            prompt="Hey how are you doing?",
+            description="Test",
+        ),
     )
 
 

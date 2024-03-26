@@ -50,7 +50,6 @@ def upload_state(path: Union[Path, str], model_name: str) -> None:
 
     # Make API call
     StatecraftClient.upload_state(metadata, state_path)
-    # StatecraftClient.upload_state(metadata, state)
 
 
 class StatefulModel(PreTrainedModel):
@@ -273,7 +272,6 @@ def test_saving_state():
     generated_state = model.build_state(input_ids=input_ids, save_state=False)
     model.save_state(
         state=generated_state,
-        path="test",
         metadata=SSMStateMetadata(
             state_name="test-state",
             model_name="state_spaces/mamba-130m-hf",
@@ -304,4 +302,4 @@ if __name__ == "__main__":
     )
 
     # test_saving_state()
-    test_loading_state()
+    # test_loading_state()

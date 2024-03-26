@@ -1,9 +1,13 @@
+import json
+import os
 from pathlib import Path
 from typing import Union
 
 import requests
 
 from statecraft.metadata import SSMStateMetadata
+from statecraft.user_attributes import UserAttributes
+from statecraft.utils import get_default_cache_dir
 
 
 class StatecraftClient:
@@ -30,7 +34,10 @@ class StatecraftClient:
         state_path: Union[Path, str],
     ) -> dict:
         state_short_name = metadata.state_name
-        username = "test_user"
+
+        user_attributes = cls._fetch_user_attrs()
+        username = user_attributes.username
+
         query_params: dict[str, str] = {
             "state_name": f"{username}/{state_short_name}",
             "model_name": metadata.model_name,
@@ -46,6 +53,23 @@ class StatecraftClient:
 
             response = requests.post(cls.states_url, params=query_params, files=state_files)
         return response.json()
+
+    @classmethod
+    def _fetch_user_attrs(cls) -> UserAttributes:
+        cache_dir = get_default_cache_dir()
+
+        # Check if user attributes are saved
+        if os.path.exists(os.path.join(cache_dir, "user_attributes.json")):
+            with open(os.path.join(cache_dir, "user_attributes.json"), "r") as f:
+                user_attributes_dict: dict = json.load(f)
+                user_attributes = UserAttributes(
+                    username=user_attributes_dict["username"],
+                    email=user_attributes_dict["email"],
+                    token=user_attributes_dict["token"],
+                )
+                return user_attributes
+        else:
+            raise ValueError("User attributes not found. Please run statecraft.setup()")
 
 
 if __name__ == "__main__":

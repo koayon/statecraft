@@ -9,7 +9,7 @@ from transformers import AutoTokenizer, MambaForCausalLM, PreTrainedModel
 from transformers.models.mamba.modeling_mamba import MambaCache, MambaCausalLMOutput
 
 from statecraft.client import StatecraftClient
-from statecraft.types import SSMStateMetadata
+from statecraft.metadata import SSMStateMetadata
 
 
 def get_cached_state(

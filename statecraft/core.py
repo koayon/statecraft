@@ -2,7 +2,7 @@ import getpass
 import json
 import os
 from pathlib import Path
-from typing import Optional, Union
+from typing import Any, Optional, Union
 
 import torch as t
 from transformers import AutoTokenizer, MambaForCausalLM, PreTrainedModel
@@ -13,11 +13,18 @@ from statecraft.types import SSMStateMetadata
 
 
 def get_cached_state(
-    saved_state_name: Union[Path, str], model_name: str, cache_dir: Optional[str] = None
+    saved_state_name: Union[Path, str],
+    model_name: str,
+    state_username: str = "CURRENT_USER",
+    cache_dir: Optional[str] = None,
 ) -> tuple[MambaCache, SSMStateMetadata, str]:
     if cache_dir is None:
         cache_dir = StatefulModel._get_default_cache_dir()
-    base_path = os.path.join(cache_dir, model_name, "CURRENT_USER", Path(saved_state_name))
+
+    if "/" in str(saved_state_name):
+        base_path = os.path.join(cache_dir, model_name, Path(saved_state_name))
+    else:
+        base_path = os.path.join(cache_dir, model_name, state_username, Path(saved_state_name))
 
     is_local = os.path.isdir(base_path)
     if not is_local:
@@ -26,9 +33,22 @@ def get_cached_state(
     state = t.load(os.path.join(base_path, "state.pt"))
 
     with open(os.path.join(base_path, "metadata.json"), "r") as json_file:
-        metadata_dict = json.load(json_file)
+        metadata_dict: dict[str, Any] = json.load(json_file)
 
-    metadata = SSMStateMetadata(**metadata_dict)
+    for key in ("state_name", "model_name", "prompt"):
+        if key not in metadata_dict:
+            raise ValueError(f"Metadata must contain key: {key}")
+
+    metadata = SSMStateMetadata(
+        state_name=metadata_dict.get("state_name"),  # type: ignore
+        model_name=metadata_dict.get("model_name"),  # type: ignore
+        prompt=metadata_dict.get("prompt"),  # type: ignore
+        description=metadata_dict.get("description"),
+        keywords=metadata_dict.get("keywords"),
+    )
+
+    print("Metadata: \n", metadata)
+    print(f"State loaded from {base_path}")
 
     return state, metadata, base_path
 
@@ -88,10 +108,18 @@ class StatefulModel(PreTrainedModel):
     def from_pretrained(
         cls,
         model_name: str,
-        initial_state: Optional[MambaCache] = None,
+        initial_state_name: Optional[str] = None,
         device: Optional[str] = None,
     ) -> "StatefulModel":
+        # Load model from Hugging Face
         model: MambaForCausalLM = MambaForCausalLM.from_pretrained(model_name)  # type: ignore
+
+        # Load initial state
+        if initial_state_name is not None:
+            initial_state = cls._load_state(model_name, initial_state_name)
+        else:
+            initial_state = None
+
         stateful_model = cls(model=model, initial_state=initial_state, model_name=model_name)
         return stateful_model
 
@@ -152,52 +180,17 @@ class StatefulModel(PreTrainedModel):
         )
         self.save_state(state=self.initial_state, metadata=metadata)
 
-    def load_local_state(
-        self, saved_state_path: Union[str, Path], cache_dir: Optional[str] = None
-    ) -> None:
+    def load_state(self, path: str, cache_dir: Optional[str] = None) -> None:
         if self.model_name is None:
             raise ValueError(
-                "Method .load_local_state(...) requires the model_name to be set.",
+                "Method .load_state(...) requires the model_name to be set.",
                 "This happens automatically when using from_pretrained.",
                 "Otherwise you can set it manually",
             )
-        state, metadata, base_path = get_cached_state(
-            saved_state_path, self.model_name, cache_dir
+        state = self._load_state(
+            model_name=self.model_name, state_name_path=path, cache_dir=cache_dir
         )
-
-        print("Metadata: \n", metadata)
-        self.initial_state = state
-
-        print(f"State loaded from {base_path}")
-
-    def load_state(
-        self, model_name: Optional[str], path: str, cache_dir: Optional[str] = None
-    ) -> None:
-        path_split = path.split("/")
-        if len(path_split) == 1:
-            state_name = path_split[0]
-            self.load_local_state(state_name, cache_dir)
-
-        elif len(path_split) == 2:
-            state_name = path
-            model_name = model_name or self.model_name
-            if model_name is None:
-                raise ValueError(
-                    "Model name must be provided when loading a state from the server."
-                )
-            state_bytes = StatecraftClient.get_state(model_name, state_name)
-            # TODO: Turn bytes into MambaCache
-            # Save MambaCache to cache_dir
-            # Load MambaCache from cache_dir
-
-            raise NotImplementedError
-            state = t.load(full_state_path)
-            self.initial_state = state
-
-        else:
-            raise ValueError(
-                "Invalid path provided. Must be either a local path or a server path."
-            )
+        self.update_state(state)
 
     def combine_states(
         self, states: list[MambaCache], weights: Optional[list[float]] = None
@@ -211,6 +204,81 @@ class StatefulModel(PreTrainedModel):
 
     def update_state(self, state: MambaCache) -> None:
         self.initial_state = state
+
+    def rag_generate(self, input_str: str) -> str:
+        raise NotImplementedError
+
+    @classmethod
+    def _save_state_binaries(
+        cls,
+        state_bytes: bytes,
+        model_name_path: str,
+        state_name_path: str,
+        cache_dir: Optional[str] = None,
+    ) -> None:
+        cache_dir = cls._get_default_cache_dir() if cache_dir is None else cache_dir
+        base_path = os.path.join(cache_dir, model_name_path, state_name_path)
+
+        os.makedirs(base_path, exist_ok=False)
+
+        state_path = os.path.join(base_path, "state.pt")
+        with open(state_path, "wb") as f:
+            f.write(state_bytes)
+
+        metadata_path = os.path.join(base_path, "metadata.json")
+        metadata = SSMStateMetadata(
+            state_name=state_name_path,
+            model_name=model_name_path,
+            prompt="See statecrafthub.com for details on the prompt used",
+            description=None,
+        )
+
+        with open(metadata_path, "w") as json_file:
+            json.dump(metadata.to_dict(), json_file)
+
+    @classmethod
+    def _load_state(
+        cls, model_name: str, state_name_path: str, cache_dir: Optional[str] = None
+    ) -> MambaCache:
+        try:  # Try loading from local cache
+            state, _metadata, _base_path = get_cached_state(
+                saved_state_name=state_name_path,
+                model_name=model_name,
+                cache_dir=cache_dir,
+            )
+            return state
+        except:
+            pass
+
+        try:  # Try loading from server
+            state_bytes = StatecraftClient.get_state(model_name, state_name_path)
+        except:
+            raise ValueError(
+                f"Failed to load state from local cache and server.",
+                f"Model name: {model_name}",
+                f"State name: {state_name_path}",
+            )
+
+        try:
+            cls._save_state_binaries(
+                state_bytes=state_bytes,
+                model_name_path=model_name,
+                state_name_path=state_name_path,
+                cache_dir=cache_dir,
+            )
+        except:
+            raise IOError(
+                f"Failed to save state binaries to local cache.",
+                f"Model name: {model_name}",
+                f"State name: {state_name_path}",
+            )
+
+        state, _metadata, _base_path = get_cached_state(
+            saved_state_name=state_name_path,
+            model_name=model_name,
+            cache_dir=cache_dir,
+        )
+        return state
 
     @classmethod
     def _get_default_cache_dir(cls) -> str:
@@ -228,9 +296,6 @@ class StatefulModel(PreTrainedModel):
     def _reset_state_offset(self, state: MambaCache) -> MambaCache:
         state.seqlen_offset = 0
         return state
-
-    def rag_generate(self, input_str: str) -> str:
-        raise NotImplementedError
 
 
 def main():
@@ -263,32 +328,9 @@ def main():
     # StatefulModel with initial state
     stateful_model = StatefulModel.from_pretrained(
         model_name="state-spaces/mamba-130m-hf",
-        initial_state=saved_cache_params,
+        initial_state_name="test-state",
     )
     print(stateful_model)
-
-
-def test_saving_state():
-    generated_state = model.build_state(input_ids=input_ids, save_state=False)
-    model.save_state(
-        state=generated_state,
-        metadata=SSMStateMetadata(
-            state_name="test-state",
-            model_name="state_spaces/mamba-130m-hf",
-            prompt="Hey how are you doing?",
-            description="Test",
-        ),
-    )
-
-
-def test_loading_state():
-    print(model.initial_state.ssm_states[0].shape)
-    print("Previous state", model.initial_state.ssm_states[0][0])
-    model.load_local_state(
-        saved_state_path="test",
-    )
-    print(model.initial_state.ssm_states[0].shape)
-    print("After state", model.initial_state.ssm_states[0][0])
 
 
 if __name__ == "__main__":
@@ -298,8 +340,5 @@ if __name__ == "__main__":
     ]
     model = StatefulModel.from_pretrained(
         model_name="state-spaces/mamba-130m-hf",
-        initial_state=None,
+        initial_state_name=None,
     )
-
-    # test_saving_state()
-    # test_loading_state()

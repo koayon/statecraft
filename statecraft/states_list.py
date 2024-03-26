@@ -2,6 +2,7 @@ import os
 from typing import Optional
 
 from statecraft import StatefulModel
+from statecraft.client import StatecraftClient
 
 ALL_DIRS_TO_REMOVE = [".DS_Store"]
 
@@ -32,6 +33,10 @@ def list_local_states(model_name: str, cache_dir: Optional[str] = None) -> list[
             ]
 
     return out
+
+
+def list_server_states(model_name: str) -> list[str]:
+    return StatecraftClient.get_states(model_name)
 
 
 if __name__ == "__main__":

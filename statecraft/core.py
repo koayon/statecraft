@@ -135,6 +135,20 @@ class StatefulModel(PreTrainedModel):
             pass
         return out.cache_params
 
+    def rag_generate(self, input_str: str) -> str:
+        raise NotImplementedError
+
+    def combine_states(
+        self, states: list[MambaCache], weights: Optional[list[float]] = None
+    ) -> MambaCache:
+        # TODO: Check compatibility
+
+        # Combine states
+        if weights is None:
+            weights = [1 / len(states)] * len(states)
+        raise NotImplementedError
+
+    # STATE SAVING
     @classmethod
     def save_state(
         cls,
@@ -180,6 +194,8 @@ class StatefulModel(PreTrainedModel):
         )
         self.save_state(state=self.initial_state, metadata=metadata)
 
+    # STATE LOADING
+
     def load_state(self, path: str, cache_dir: Optional[str] = None) -> None:
         if self.model_name is None:
             raise ValueError(
@@ -192,21 +208,8 @@ class StatefulModel(PreTrainedModel):
         )
         self.update_state(state)
 
-    def combine_states(
-        self, states: list[MambaCache], weights: Optional[list[float]] = None
-    ) -> MambaCache:
-        # TODO: Check compatibility
-
-        # Combine states
-        if weights is None:
-            weights = [1 / len(states)] * len(states)
-        raise NotImplementedError
-
     def update_state(self, state: MambaCache) -> None:
         self.initial_state = state
-
-    def rag_generate(self, input_str: str) -> str:
-        raise NotImplementedError
 
     @classmethod
     def _save_state_binaries(

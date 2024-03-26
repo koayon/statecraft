@@ -247,16 +247,17 @@ class StatefulModel(PreTrainedModel):
                 cache_dir=cache_dir,
             )
             return state
-        except:
+        except Exception as e:
             pass
 
         try:  # Try loading from server
             state_bytes = StatecraftClient.get_state(model_name, state_name_path)
-        except:
+        except Exception as e:
             raise ValueError(
                 f"Failed to load state from local cache and server.",
                 f"Model name: {model_name}",
                 f"State name: {state_name_path}",
+                e,
             )
 
         try:
@@ -266,11 +267,12 @@ class StatefulModel(PreTrainedModel):
                 state_name_path=state_name_path,
                 cache_dir=cache_dir,
             )
-        except:
+        except Exception as e:
             raise IOError(
                 f"Failed to save state binaries to local cache.",
                 f"Model name: {model_name}",
                 f"State name: {state_name_path}",
+                e,
             )
 
         state, _metadata, _base_path = get_cached_state(

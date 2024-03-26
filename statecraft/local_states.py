@@ -35,5 +35,5 @@ def list_local_states(model_name: str, cache_dir: Optional[str] = None) -> list[
 
 
 if __name__ == "__main__":
-    states = list_local_states("state_spaces/mamba-130m-hf")
+    states = list_local_states("state-spaces/mamba-130m-hf")
     print(states)

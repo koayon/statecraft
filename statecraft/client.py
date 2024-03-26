@@ -33,7 +33,7 @@ class StatecraftClient:
         metadata: SSMStateMetadata,
         state_path: Union[Path, str],
     ) -> dict:
-        state_short_name = metadata.state_name
+        state_short_name = metadata.state_name.split("/")[-1]
 
         user_attributes = cls._fetch_user_attrs()
         username = user_attributes.username
@@ -84,7 +84,7 @@ if __name__ == "__main__":
     #         prompt="This is a test state",
     #         description="This is a test description",
     #     ),
-    #     state_path="/Users/Kola/.cache/statecraft/state_spaces/mamba-130m-hf/CURRENT_USER/test-state/state.pt",
+    #     state_path="/Users/Kola/.cache/statecraft/state-spaces/mamba-130m-hf/CURRENT_USER/test-state/state.pt",
     # )
 
     # print(response_json)

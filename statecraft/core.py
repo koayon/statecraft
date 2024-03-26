@@ -69,7 +69,8 @@ def upload_state(path: Union[Path, str], model_name: str) -> None:
     state_path = os.path.join(base_path, "state.pt")
 
     # Make API call
-    StatecraftClient.upload_state(metadata, state_path)
+    client = StatecraftClient()
+    client.upload_state(metadata, state_path)
 
 
 class StatefulModel(PreTrainedModel):
@@ -254,7 +255,8 @@ class StatefulModel(PreTrainedModel):
             pass
 
         try:  # Try loading from server
-            state_bytes = StatecraftClient.get_state(model_name, state_name_path)
+            client = StatecraftClient()
+            state_bytes = client.get_state(model_name, state_name_path)
         except Exception as e:
             raise ValueError(
                 f"Failed to load state from local cache and server.",

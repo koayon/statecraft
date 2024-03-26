@@ -36,7 +36,8 @@ def list_local_states(model_name: str, cache_dir: Optional[str] = None) -> list[
 
 
 def list_server_states(model_name: str) -> list[str]:
-    return StatecraftClient.get_states(model_name)
+    client = StatecraftClient()
+    return client.get_states(model_name)
 
 
 if __name__ == "__main__":

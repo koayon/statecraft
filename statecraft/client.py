@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from typing import Optional, Union
+from typing import Any, Optional, Union
 
 import requests
 
@@ -15,30 +15,51 @@ class StatecraftClient:
         pass
 
     @classmethod
-    def get_state(cls, state_full_identifier: str) -> dict:
-        response = requests.get(f"{cls.states_url}/{state_full_identifier}")
-        return response.json()
+    def get_state(cls, model_name: str, state_name: str) -> bytes:
+        response = requests.get(f"{cls.states_url}/{model_name}/{state_name}")
+        if response.status_code == 200:
+            raw_bytes = response.content
+            print("Got state: ", raw_bytes[:100])
+            return raw_bytes
+        else:
+            raise ValueError(f"Failed to get state: {response.text}")
+
+    # @classmethod
+    # def get_state_metadata(cls, state_full_identifier: str) -> SSMStateMetadata:
+    #     response = requests.get(f"metadata/{cls.states_url}/{state_full_identifier}")
+    #     if response.status_code == 200:
+    #         metadata_dict = response.json()
+    #         metadata = SSMStateMetadata(**metadata_dict)
+    #         return metadata
+    #     else:
+    #         raise ValueError(f"Failed to get state metadata: {response.text}")
 
     @classmethod
     def upload_state(
         cls,
         metadata: SSMStateMetadata,
-        state: bytes,
+        state_path: Union[Path, str],
     ) -> dict:
-        response = requests.post(cls.states_url, json=state)
+        state_short_name = metadata.state_name
+        username = "test_user"
+        query_params: dict[str, str] = {
+            "state_name": f"{username}/{state_short_name}",
+            "model_name": metadata.model_name,
+            "prompt": metadata.prompt,
+        }
+        if metadata.description:
+            query_params["description"] = metadata.description
+        # if metadata.keywords:
+        #     query_params["keywords"] = str(metadata.keywords)
+
+        with open(state_path, "rb") as f:
+            state_files = {"file": f}
+
+        response = requests.post(cls.states_url, params=query_params, files=state_files)
         return response.json()
 
 
 if __name__ == "__main__":
     client = StatecraftClient()
-    state = client.get_state("state-spaces/mamba-130m-hf/test_user/test_short_state_name")
+    state = client.get_state("state-spaces/mamba-130m-hf", "test_user/test_a")
     print(state)
-
-#     "state_name": "string",
-#   "description": "string",
-#   "model_name": "string",
-#   "prompt": "string",
-#   "keywords": [
-#     "string"
-#   ],
-#   "state": "string"

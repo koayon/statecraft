@@ -1,6 +1,5 @@
-import json
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Union
 
 import requests
 
@@ -19,20 +18,10 @@ class StatecraftClient:
         response = requests.get(f"{cls.states_url}/{model_name}/{state_name}")
         if response.status_code == 200:
             raw_bytes = response.content
-            print("Got state: ", raw_bytes[:100])
+            print("Got state - raw_bytes: ", raw_bytes[:100])
             return raw_bytes
         else:
             raise ValueError(f"Failed to get state: {response.text}")
-
-    # @classmethod
-    # def get_state_metadata(cls, state_full_identifier: str) -> SSMStateMetadata:
-    #     response = requests.get(f"metadata/{cls.states_url}/{state_full_identifier}")
-    #     if response.status_code == 200:
-    #         metadata_dict = response.json()
-    #         metadata = SSMStateMetadata(**metadata_dict)
-    #         return metadata
-    #     else:
-    #         raise ValueError(f"Failed to get state metadata: {response.text}")
 
     @classmethod
     def upload_state(

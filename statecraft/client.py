@@ -53,9 +53,9 @@ class StatecraftClient:
         #     query_params["keywords"] = str(metadata.keywords)
 
         with open(state_path, "rb") as f:
-            state_files = {"file": f}
+            state_files = {"state_file": f}
 
-        response = requests.post(cls.states_url, params=query_params, files=state_files)
+            response = requests.post(cls.states_url, params=query_params, files=state_files)
         return response.json()
 
 
@@ -63,3 +63,15 @@ if __name__ == "__main__":
     client = StatecraftClient()
     state = client.get_state("state-spaces/mamba-130m-hf", "test_user/test_a")
     print(state)
+
+    # response_json = client.upload_state(
+    #     SSMStateMetadata(
+    #         model_name="state-spaces/mamba-130m-hf",
+    #         state_name="test-state",
+    #         prompt="This is a test state",
+    #         description="This is a test description",
+    #     ),
+    #     state_path="/Users/Kola/.cache/statecraft/state_spaces/mamba-130m-hf/CURRENT_USER/test-state/state.pt",
+    # )
+
+    # print(response_json)

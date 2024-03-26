@@ -10,6 +10,7 @@ from transformers.models.mamba.modeling_mamba import MambaCache, MambaCausalLMOu
 
 from statecraft.client import StatecraftClient
 from statecraft.metadata import SSMStateMetadata
+from statecraft.utils import get_default_cache_dir
 
 
 def get_cached_state(
@@ -287,13 +288,7 @@ class StatefulModel(PreTrainedModel):
 
     @classmethod
     def _get_default_cache_dir(cls) -> str:
-        if os.name == "posix":  # For Linux and macOS
-            return os.path.expanduser("~/.cache/statecraft/")
-        elif os.name == "nt":  # For Windows
-            username = getpass.getuser()
-            return os.path.expanduser(rf"C:\Users\{username}\.cache\statecraft")
-        else:
-            raise ValueError(f"Unsupported operating system: {os.name}")
+        return get_default_cache_dir()
 
     def _check_state_compatible(self, state: MambaCache) -> bool:
         raise NotImplementedError

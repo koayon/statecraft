@@ -3,7 +3,7 @@ from typing import Union
 
 import requests
 
-from statecraft.types import SSMStateMetadata
+from statecraft.metadata import SSMStateMetadata
 
 
 class StatecraftClient:

@@ -49,8 +49,8 @@ class StatecraftClient:
         }
         if metadata.description:
             query_params["description"] = metadata.description
-        # if metadata.keywords:
-        #     query_params["keywords"] = str(metadata.keywords)
+        if metadata.keywords:
+            query_params["keywords"] = str(metadata.keywords)
 
         with open(state_path, "rb") as f:
             state_files = {"state_file": f}

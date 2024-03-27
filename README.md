@@ -9,7 +9,7 @@ from statecraft import StatefulModel
 
 model = StatefulModel.from_pretrained(
         model_name="state-spaces/mamba-130m-hf",
-        initial_state_name="koayon/physics-state",
+        initial_state_name="koayon/state-a",
     )
 ```
 

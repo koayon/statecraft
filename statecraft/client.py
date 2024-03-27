@@ -10,17 +10,21 @@ from statecraft.models import StateOut, StatesOut
 from statecraft.user_attributes import UserAttributes
 from statecraft.utils import get_default_cache_dir
 
+BASE_URL = "http://www.api.statecrafthub.com"
+LOCAL_URL = "http://localhost"
+
 
 class StatecraftClient:
-    base_url = "http://localhost"
-    states_url = f"{base_url}/states"
 
-    def __init__(self):
-        pass
+    def __init__(self, base_url: str = BASE_URL):
+        self.base_url = base_url
+        self.states_url = os.path.join(base_url, "states")
 
-    @classmethod
-    def get_state(cls, model_name: str, state_name: str) -> bytes:
-        response = requests.get(f"{cls.states_url}/{model_name}/{state_name}")
+    def get_state(self, model_name: str, state_name: str) -> bytes:
+        full_url = os.path.join(self.states_url, model_name, state_name)
+
+        response = requests.get(full_url)
+
         if response.status_code == 200:
             raw_bytes = response.content
             print("Got state - raw_bytes: ", raw_bytes[:100])
@@ -28,15 +32,14 @@ class StatecraftClient:
         else:
             raise ValueError(f"Failed to get state: {response.text}")
 
-    @classmethod
     def upload_state(
-        cls,
+        self,
         metadata: SSMStateMetadata,
         state_path: Union[Path, str],
     ) -> dict:
         state_short_name = metadata.state_name.split("/")[-1]
 
-        user_attributes = cls._fetch_user_attrs()
+        user_attributes = self._fetch_user_attrs()
         username = user_attributes.username
 
         query_params: dict[str, str] = {
@@ -52,7 +55,7 @@ class StatecraftClient:
         with open(state_path, "rb") as f:
             state_files = {"state_file": f}
 
-            response = requests.post(cls.states_url, params=query_params, files=state_files)
+            response = requests.post(self.states_url, params=query_params, files=state_files)
             # TODO: Type this output
         return response.json()
 
@@ -73,8 +76,7 @@ class StatecraftClient:
         else:
             raise ValueError("User attributes not found. Please run statecraft.setup()")
 
-    @classmethod
-    def get_states(cls, model_name: str) -> list[str]:
+    def get_states(self, model_name: str) -> list[str]:
         model_user_name, model_short_name = model_name.split("/")
         query_params = {
             "model_user_name": model_user_name,
@@ -82,7 +84,7 @@ class StatecraftClient:
         }
 
         response = requests.get(
-            cls.states_url,
+            self.states_url,
             params=query_params,
         )
         parsed_response: list[dict[str, str]] = response.json()  # StatesOut
@@ -94,9 +96,17 @@ class StatecraftClient:
 
         return states_list
 
+    def create_user(self, username: str, email: str) -> int:
+        response = requests.post(
+            os.path.join(self.base_url, "users"),
+            json={"username": username, "email": email},
+        )
+        response_code = response.status_code
+        return response_code
+
 
 if __name__ == "__main__":
-    client = StatecraftClient()
+    client = StatecraftClient(LOCAL_URL)
     state = client.get_state("state-spaces/mamba-130m-hf", "test_user/test_a")
     print(state)
 

@@ -62,23 +62,6 @@ class StatecraftClient:
         else:
             return f"Failed to upload state: {response.status_code}"
 
-    @classmethod
-    def _fetch_user_attrs(cls) -> UserAttributes:
-        cache_dir = get_default_cache_dir()
-
-        # Check if user attributes are saved
-        if os.path.exists(os.path.join(cache_dir, "user_attributes.json")):
-            with open(os.path.join(cache_dir, "user_attributes.json"), "r") as f:
-                user_attributes_dict: dict = json.load(f)
-                user_attributes = UserAttributes(
-                    username=user_attributes_dict["username"],
-                    email=user_attributes_dict["email"],
-                    token=user_attributes_dict["token"],
-                )
-                return user_attributes
-        else:
-            raise ValueError("User attributes not found. Please run statecraft.setup()")
-
     def get_states(self, model_name: str) -> list[str]:
         model_user_name, model_short_name = model_name.split("/")
         query_params = {
@@ -107,13 +90,30 @@ class StatecraftClient:
         response_code = response.status_code
         return response_code
 
+    @classmethod
+    def _fetch_user_attrs(cls) -> UserAttributes:
+        cache_dir = get_default_cache_dir()
+
+        # Check if user attributes are saved
+        if os.path.exists(os.path.join(cache_dir, "user_attributes.json")):
+            with open(os.path.join(cache_dir, "user_attributes.json"), "r") as f:
+                user_attributes_dict: dict = json.load(f)
+                user_attributes = UserAttributes(
+                    username=user_attributes_dict["username"],
+                    email=user_attributes_dict["email"],
+                    token=user_attributes_dict["token"],
+                )
+                return user_attributes
+        else:
+            raise ValueError("User attributes not found. Please run statecraft.setup()")
+
 
 client = StatecraftClient()
 
 
 if __name__ == "__main__":
-    # state = client.get_state("state-spaces/mamba-130m-hf", "test_user/test_a")
-    # print(state)
+    state = client.get_state("state-spaces/mamba-130m-hf", "koayon/state-a")
+    print(state[:100])
 
     states = client.get_states("state-spaces/mamba-130m-hf")
     print(states)

@@ -36,7 +36,7 @@ class StatecraftClient:
         self,
         metadata: SSMStateMetadata,
         state_path: Union[Path, str],
-    ) -> dict:
+    ) -> str:
         state_short_name = metadata.state_name.split("/")[-1]
 
         user_attributes = self._fetch_user_attrs()
@@ -57,7 +57,10 @@ class StatecraftClient:
 
             response = requests.post(self.states_url, params=query_params, files=state_files)
             # TODO: Type this output
-        return response.json()
+        if response.status_code in (200, 201):
+            return "State uploaded successfully!"
+        else:
+            return f"Failed to upload state: {response.status_code}"
 
     @classmethod
     def _fetch_user_attrs(cls) -> UserAttributes:
@@ -109,20 +112,20 @@ client = StatecraftClient()
 
 
 if __name__ == "__main__":
-    state = client.get_state("state-spaces/mamba-130m-hf", "test_user/test_a")
-    print(state)
+    # state = client.get_state("state-spaces/mamba-130m-hf", "test_user/test_a")
+    # print(state)
 
     states = client.get_states("state-spaces/mamba-130m-hf")
     print(states)
 
-    # response_json = client.upload_state(
-    #     SSMStateMetadata(
-    #         model_name="state-spaces/mamba-130m-hf",
-    #         state_name="test-state",
-    #         prompt="This is a test state",
-    #         description="This is a test description",
-    #     ),
-    #     state_path="/Users/Kola/.cache/statecraft/state-spaces/mamba-130m-hf/CURRENT_USER/test-state/state.pt",
-    # )
+    response_json = client.upload_state(
+        SSMStateMetadata(
+            model_name="state-spaces/mamba-130m-hf",
+            state_name="first-state",
+            prompt="This is a test state",
+            description="Here's a description...",
+        ),
+        state_path="/Users/Kola/.cache/statecraft/state-spaces/mamba-130m-hf/CURRENT_USER/test-state/state.pt",
+    )
 
-    # print(response_json)
+    print(response_json)

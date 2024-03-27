@@ -3,7 +3,7 @@ import os
 
 import typer
 
-from statecraft.client import StatecraftClient
+from statecraft.client import client
 from statecraft.user_attributes import UserAttributes
 from statecraft.utils import get_default_cache_dir
 
@@ -20,7 +20,6 @@ def setup() -> None:
 
     print("Saved username and email!")
 
-    client = StatecraftClient()
     response_code = client.create_user(username, email)
     if response_code in (200, 201):
         print("User created successfully!")

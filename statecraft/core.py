@@ -7,7 +7,7 @@ import torch as t
 from transformers import AutoTokenizer, MambaForCausalLM, PreTrainedModel
 from transformers.models.mamba.modeling_mamba import MambaCache, MambaCausalLMOutput
 
-from statecraft.client import StatecraftClient
+from statecraft.client import client
 from statecraft.metadata import SSMStateMetadata
 from statecraft.utils import get_default_cache_dir
 
@@ -69,7 +69,6 @@ def upload_state(path: Union[Path, str], model_name: str) -> None:
     state_path = os.path.join(base_path, "state.pt")
 
     # Make API call
-    client = StatecraftClient()
     client.upload_state(metadata, state_path)
 
 
@@ -255,7 +254,6 @@ class StatefulModel(PreTrainedModel):
             pass
 
         try:  # Try loading from server
-            client = StatecraftClient()
             state_bytes = client.get_state(model_name, state_name_path)
         except Exception as e:
             raise ValueError(

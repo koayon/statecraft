@@ -105,8 +105,10 @@ class StatecraftClient:
         return response_code
 
 
+client = StatecraftClient()
+
+
 if __name__ == "__main__":
-    client = StatecraftClient(LOCAL_URL)
     state = client.get_state("state-spaces/mamba-130m-hf", "test_user/test_a")
     print(state)
 

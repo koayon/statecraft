@@ -152,9 +152,6 @@ class StatefulModel(PreTrainedModel):
         )
         return mamba_cache
 
-    def rag_generate(self, input_str: str) -> str:
-        raise NotImplementedError
-
     @classmethod
     def combine_states(
         cls, states: list[MambaCache], weights: Optional[list[float]] = None

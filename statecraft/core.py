@@ -10,7 +10,7 @@ from transformers.models.mamba.modeling_mamba import MambaCache, MambaCausalLMOu
 
 from statecraft.client import client
 from statecraft.metadata import SSMStateMetadata
-from statecraft.utils import get_default_cache_dir
+from statecraft.utils import cache_to_device, get_default_cache_dir
 
 
 def get_cached_state(
@@ -84,6 +84,9 @@ class StatefulModel(PreTrainedModel):
         super().__init__(model.config)
         if initial_state is None:
             initial_state = MambaCache(config=model.config, batch_size=1, device=device)
+
+        if device is not None:
+            initial_state = cache_to_device(initial_state, device)
         self.initial_state: MambaCache = initial_state
         self.model = model
         self.model_name = model_name
@@ -113,7 +116,7 @@ class StatefulModel(PreTrainedModel):
         device: Optional[str] = None,
     ) -> "StatefulModel":
         # Load model from Hugging Face
-        model: MambaForCausalLM = MambaForCausalLM.from_pretrained(model_name)  # type: ignore
+        model: MambaForCausalLM = MambaForCausalLM.from_pretrained(model_name, device_map=device)  # type: ignore
 
         # Load initial state
         if initial_state_name is not None:
@@ -121,7 +124,9 @@ class StatefulModel(PreTrainedModel):
         else:
             initial_state = None
 
-        stateful_model = cls(model=model, initial_state=initial_state, model_name=model_name)
+        stateful_model = cls(
+            model=model, initial_state=initial_state, model_name=model_name, device=device
+        )
         return stateful_model
 
     def build_state(
@@ -278,7 +283,7 @@ class StatefulModel(PreTrainedModel):
         self.initial_state = state
 
     def reset_state(self) -> None:
-        self.initial_state = MambaCache(config=self.model.config, batch_size=1, device=None)
+        self.initial_state = MambaCache(config=self.model.config, batch_size=1)
 
     # HELPER METHODS
 

@@ -1,8 +1,9 @@
 import pytest
 import torch as t
-from transformers.models.mamba.modeling_mamba import MambaCache, MambaConfig
+from transformers.models.mamba.modeling_mamba import MambaConfig
 
 from statecraft import StatefulModel
+from statecraft.cache import MambaCache
 
 small_model_config = MambaConfig.from_pretrained("state-spaces/mamba-130m-hf")
 medium_model_config = MambaConfig.from_pretrained("state-spaces/mamba-370m-hf")

@@ -6,11 +6,13 @@ from typing import Any, Optional, Union
 import torch as t
 from einops import einsum
 from transformers import AutoTokenizer, MambaForCausalLM, PreTrainedModel
-from transformers.models.mamba.modeling_mamba import MambaCache, MambaCausalLMOutput
+from transformers.models import mamba
+from transformers.models.mamba.modeling_mamba import MambaCausalLMOutput
 
+from statecraft.cache import MambaCache
 from statecraft.client import client
 from statecraft.metadata import SSMStateMetadata
-from statecraft.utils import cache_to_device, get_default_cache_dir
+from statecraft.utils import get_default_cache_dir
 
 
 def get_cached_state(
@@ -86,7 +88,7 @@ class StatefulModel(PreTrainedModel):
             initial_state = MambaCache(config=model.config, batch_size=1, device=device)
 
         if device is not None:
-            initial_state = cache_to_device(initial_state, device)
+            initial_state = initial_state.to(device)
         self.initial_state: MambaCache = initial_state
         self.model = model
         self.model_name = model_name
@@ -132,14 +134,23 @@ class StatefulModel(PreTrainedModel):
     def build_state(
         self,
         input_ids: t.Tensor,
-        save_state: bool,
         cache_params: Optional[MambaCache] = None,
+        model_name: Optional[str] = None,
     ) -> MambaCache:
+        # Check if model_name is provided
+        if model_name is None and self.model_name is None:
+            raise ValueError("Model name must be provided.")
+        elif model_name is None:
+            model_name = self.model_name
+        assert model_name is not None
+
         out: MambaCausalLMOutput = self.forward(input_ids=input_ids, cache_params=cache_params)
         assert out.cache_params is not None
-        if save_state:
-            pass
-        return out.cache_params
+
+        mamba_cache = MambaCache.from_hf_cache(
+            hf_cache=out.cache_params, model_name=model_name
+        )
+        return mamba_cache
 
     def rag_generate(self, input_str: str) -> str:
         raise NotImplementedError

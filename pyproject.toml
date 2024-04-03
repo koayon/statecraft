@@ -25,7 +25,7 @@ Repository = "https://github.com/koayon/statecraft.git"
 [tool.poetry.dependencies]
 einops= "0.6.1"
 pydantic = "2.5.3"
-python = "^3.10"
+python = "^3.8"
 python-dotenv = "^0.19.1"
 Requests = "2.31.0"
 torch = "2.1.2"

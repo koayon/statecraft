@@ -294,8 +294,30 @@ class StatefulModel(PreTrainedModel):
     def _get_default_cache_dir(cls) -> str:
         return get_default_cache_dir()
 
-    def _check_state_compatible(self, state: MambaCache) -> bool:
-        raise NotImplementedError
+    @classmethod
+    def _check_state_compatible(cls, state1: MambaCache, state2: MambaCache) -> bool:
+        if state1.dtype != state2.dtype:
+            raise ValueError(
+                f"""States must have the same dtype.
+The first state provided has the dtype {state1.dtype}, which is different from {state2.dtype}, the dtype of the second state provided."""
+            )
+
+        if state1.conv_states.keys() != state2.conv_states.keys():
+            raise ValueError(
+                f"""States must have the same convolutional states.
+The first state provided has the keys {state1.conv_states.keys()}, which are different from {state2.conv_states.keys()}, the keys of the second state provided."""
+            )
+
+        if state1.ssm_states.keys() != state2.ssm_states.keys():
+            raise ValueError(
+                f"""States must have the same SSM states.
+The first state provided has the keys {state1.ssm_states.keys()}, which are different from {state2.ssm_states.keys()}, the keys of the second state provided."""
+            )
+
+        if state1.ssm_states[0].shape != state2.ssm_states[0].shape:
+            raise ValueError(f"""SSM States should be the same shape.""")
+
+        return True
 
     def _reset_state_offset(self, state: MambaCache) -> MambaCache:
         state.seqlen_offset = 0

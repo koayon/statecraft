@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any, Optional, Union
 
 import torch as t
+from einops import einsum
 from transformers import AutoTokenizer, MambaForCausalLM, PreTrainedModel
 from transformers.models.mamba.modeling_mamba import MambaCache, MambaCausalLMOutput
 
@@ -138,15 +139,80 @@ class StatefulModel(PreTrainedModel):
     def rag_generate(self, input_str: str) -> str:
         raise NotImplementedError
 
+    @classmethod
     def combine_states(
-        self, states: list[MambaCache], weights: Optional[list[float]] = None
+        cls, states: list[MambaCache], weights: Optional[list[float]] = None
     ) -> MambaCache:
-        # TODO: Check compatibility
+        num_states_to_combine = len(states)
 
-        # Combine states
+        if num_states_to_combine == 1:
+            return states[0]
+        elif num_states_to_combine == 0:
+            raise ValueError("No states provided to combine.")
+
+        original_dtype = states[0].dtype
+        batch_size, intemediate_size, ssm_state_size = states[0].ssm_states[0].shape
+        num_layers = len(states[0].conv_states)
+
+        # Check if all states are compatible
+        for i, state in enumerate(states):
+            if i == 0:
+                pass
+            else:
+                cls._check_state_compatible(states[0], state)
+
+        # Build weights tensor
         if weights is None:
             weights = [1 / len(states)] * len(states)
-        raise NotImplementedError
+        elif len(weights) != len(states):
+            raise ValueError(
+                f"Number of weights provided ({len(weights)}) must match the number of states provided ({len(states)})"
+            )
+        weights_tensor = t.tensor(weights)
+
+        # Combine Conv states
+        conv_states_stacked = [
+            t.stack(list(states[i].conv_states.values())) for i in range(num_states_to_combine)
+        ]  # state_num list[layer batch intermediate_size conv_kernel_size]
+
+        tensor_conv_states_stacked = t.stack(
+            conv_states_stacked
+        )  # state_num layer batch intermediate_size conv_kernel_size
+
+        new_conv_states = einsum(
+            weights_tensor,
+            tensor_conv_states_stacked.to(dtype=t.float32),
+            "state_num, state_num layer batch intermediate_size conv_kernel_size -> layer batch intermediate_size conv_kernel_size",
+        )
+
+        new_conv_states_dict = {
+            i: new_conv_states[i].to(dtype=original_dtype) for i in range(num_layers)
+        }
+
+        # Combine SSM states
+        ssm_states_stacked = [
+            t.stack(list(states[i].ssm_states.values())) for i in range(num_states_to_combine)
+        ]  # state_num list[layer batch intermediate_size ssm_state_size]
+
+        tensor_ssm_states_stacked = t.stack(
+            ssm_states_stacked
+        )  # state_num layer batch intermediate_size ssm_state_size
+
+        new_ssm_states = einsum(
+            weights_tensor,
+            tensor_ssm_states_stacked.to(dtype=t.float32),
+            "state_num, state_num layer batch intermediate_size ssm_state_size -> layer batch intermediate_size ssm_state_size",
+        )
+
+        new_ssm_states_dict = {
+            i: new_ssm_states[i].to(dtype=original_dtype) for i in range(num_layers)
+        }
+
+        out = states[0]
+        out.conv_states = new_conv_states_dict
+        out.ssm_states = new_ssm_states_dict
+
+        return out
 
     # STATE SAVING
     @classmethod

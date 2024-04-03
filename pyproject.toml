@@ -7,7 +7,7 @@ name = "statecraft"
 version = "0.1.0"
 description = "Store, manage and remix states for SSMs and other Stateful models"
 authors = ["koayon <koayon@gmail.com>"]
-license = "MIT"
+license = "Apache-2.0"
 readme = "README.md"
 packages = [{include = "statecraft"}]
 requires-python = ">=3.8"
@@ -19,6 +19,9 @@ classifiers = [
     "Intended Audience :: Developers",
     "Typing :: Typed",
 ]
+
+[tool.poetry.urls]
+Repository = "https://github.com/koayon/statecraft.git"
 
 [tool.poetry.dependencies]
 python = "^3.10"

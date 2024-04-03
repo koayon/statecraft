@@ -23,13 +23,13 @@ classifiers = [
 Repository = "https://github.com/koayon/statecraft.git"
 
 [tool.poetry.dependencies]
+einops= "0.6.1"
+pydantic = "2.5.3"
 python = "^3.10"
 python-dotenv = "^0.19.1"
-responses = "^0.13.4"
+Requests = "2.31.0"
 torch = "2.1.2"
 transformers = "4.39.3"
-pydantic = "2.5.3"
-Requests = "2.31.0"
 typer = "0.7.0"
 
 

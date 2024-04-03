@@ -211,6 +211,11 @@ class StatefulModel(PreTrainedModel):
     def update_state(self, state: MambaCache) -> None:
         self.initial_state = state
 
+    def reset_state(self) -> None:
+        self.initial_state = MambaCache(config=self.model.config, batch_size=1, device=None)
+
+    # HELPER METHODS
+
     @classmethod
     def _save_state_binaries(
         cls,
@@ -295,50 +300,3 @@ class StatefulModel(PreTrainedModel):
     def _reset_state_offset(self, state: MambaCache) -> MambaCache:
         state.seqlen_offset = 0
         return state
-
-
-def main():
-    # Set up
-    # stateless_model = MambaForCausalLM(MambaConfig())
-    stateless_model: MambaForCausalLM = MambaForCausalLM.from_pretrained("state-spaces/mamba-130m-hf")  # type: ignore
-    tokeniser = AutoTokenizer.from_pretrained("state-spaces/mamba-130m-hf")
-    input_ids: t.Tensor = tokeniser("Hey how are you doing?", return_tensors="pt")[  # type: ignore
-        "input_ids"
-    ]
-
-    # State generation with no initial state
-    model = StatefulModel(
-        model=stateless_model,
-        initial_state=None,
-    )
-    generated_state = model.build_state(input_ids=input_ids, save_state=False)
-    model.update_state(generated_state)
-
-    # Reuse of state with forward, generating a new state
-    out: MambaCausalLMOutput = model(input_ids=input_ids)
-    assert out.cache_params is not None
-    assert out.logits is not None
-    saved_cache_params = out.cache_params
-
-    print(saved_cache_params.ssm_states[1].shape)
-    print("ssm_state", saved_cache_params.ssm_states[0])
-    print("output", out.logits[0, -1, :])
-
-    # StatefulModel with initial state
-    stateful_model = StatefulModel.from_pretrained(
-        model_name="state-spaces/mamba-130m-hf",
-        initial_state_name="test-state",
-    )
-    print(stateful_model)
-
-
-if __name__ == "__main__":
-    tokeniser = AutoTokenizer.from_pretrained("state-spaces/mamba-130m-hf")
-    input_ids: t.Tensor = tokeniser("Hey how are you doing?", return_tensors="pt")[  # type: ignore
-        "input_ids"
-    ]
-    model = StatefulModel.from_pretrained(
-        model_name="state-spaces/mamba-130m-hf",
-        initial_state_name="koayon/test-state",
-    )
-    print(model.initial_state.ssm_states[0])

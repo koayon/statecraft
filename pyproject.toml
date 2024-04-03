@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "statecraft"
-version = "0.1.1"
+version = "0.1.2"
 description = "Store, manage and remix states for SSMs and other Stateful models"
 authors = ["koayon <koayon@gmail.com>"]
 license = "Apache-2.0"

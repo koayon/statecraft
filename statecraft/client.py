@@ -10,15 +10,15 @@ from statecraft.models import StateOut, StatesOut
 from statecraft.user_attributes import UserAttributes
 from statecraft.utils import get_default_cache_dir
 
-BASE_URL = "http://www.api.statecrafthub.com"
-LOCAL_URL = "http://localhost"
+BASE_URL = "https://www.api.statecrafthub.com/"
+LOCAL_URL = "http://localhost/"
 
 
 class StatecraftClient:
 
     def __init__(self, base_url: str = BASE_URL):
         self.base_url = base_url
-        self.states_url = os.path.join(base_url, "states")
+        self.states_url = f"{base_url}states/"
 
     def get_state(self, model_name: str, state_name: str) -> bytes:
         full_url = os.path.join(self.states_url, model_name, state_name)
@@ -37,27 +37,46 @@ class StatecraftClient:
         metadata: SSMStateMetadata,
         state_path: Union[Path, str],
     ) -> str:
+        url = self.states_url
+
+        print(url)
+
         state_short_name = metadata.state_name.split("/")[-1]
 
         user_attributes = self._fetch_user_attrs()
         username = user_attributes.username
 
-        query_params: dict[str, str] = {
+        query_params = {
             "state_name": f"{username}/{state_short_name}",
             "model_name": metadata.model_name,
             "prompt": metadata.prompt,
         }
+
         if metadata.description:
             query_params["description"] = metadata.description
         if metadata.keywords:
             query_params["keywords"] = str(metadata.keywords)
 
-        with open(state_path, "rb") as f:
-            state_files = {"state_file": f}
+        files = {
+            "state_file": (
+                f"{state_short_name}.pt",
+                open(state_path, "rb"),
+                "application/octet-stream",
+            )
+        }
 
-            response = requests.post(self.states_url, params=query_params, files=state_files)
-            # TODO: Type this output
+        headers = {
+            "accept": "application/json",
+        }
+        response = requests.post(url, params=query_params, files=files, headers=headers)
+
+        try:
+            response.raise_for_status()
+        except requests.exceptions.RequestException as e:
+            print(f"Error: {e}")
+
         if response.status_code in (200, 201):
+            print(response.text)
             return "State uploaded successfully!"
         else:
             return f"Failed to upload state: {response.status_code}"
@@ -73,6 +92,7 @@ class StatecraftClient:
             self.states_url,
             params=query_params,
         )
+        print(response.text)
         parsed_response: list[dict[str, str]] = response.json()  # StatesOut
 
         states_list = [
@@ -112,20 +132,22 @@ client = StatecraftClient()
 
 
 if __name__ == "__main__":
-    state = client.get_state("state-spaces/mamba-130m-hf", "koayon/state-a")
-    print(state[:100])
+    # state = client.get_state("state-spaces/mamba-130m-hf", "koayon/state-a")
+    # print(state[:100])
 
     states = client.get_states("state-spaces/mamba-130m-hf")
     print(states)
 
-    response_json = client.upload_state(
+    cache_dir = get_default_cache_dir()
+
+    response_str = client.upload_state(
         SSMStateMetadata(
             model_name="state-spaces/mamba-130m-hf",
             state_name="first-state",
-            prompt="This is a test state",
-            description="Here's a description...",
+            prompt="Fee fi fo fum, I smell the blood of an Englishman",
+            description="Children's tales",
         ),
-        state_path="/Users/Kola/.cache/statecraft/state-spaces/mamba-130m-hf/CURRENT_USER/test-state/state.pt",
+        state_path=f"{cache_dir}state-spaces/mamba-130m-hf/CURRENT_USER/test-state/state.pt",  # state_path="/Users/Kola/Documents/VSCode/open_source/statecraft/a.pt",
     )
 
-    print(response_json)
+    print(response_str)

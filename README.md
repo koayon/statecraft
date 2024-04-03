@@ -30,7 +30,7 @@ pip install statecraft
 ## 🔍 Coming Soon
 
 - Right now we only support Mamba models (in all sizes), as more SSMs and Stateful models begin to come onto Huggingface, we will support them too.
-- The statecraft community repository is available right now and a front-end for this is coming so you can view all of the community-contributed states. Right now, you can see the available states by running `statecraft.list_server_states()`.
+- The statecraft community repository is available right now and a front-end for this is coming so you can view all of the community-contributed states. Right now, you can see the available states by running `statecraft.show_available_states()`.
 - We're also looking at RAG-like generation approaches where you automatically retrieve the `state` instead of `context`, watch this space 👀
 
 ## 🧙 Conceptually

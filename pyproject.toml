@@ -10,7 +10,6 @@ authors = ["koayon <koayon@gmail.com>"]
 license = "Apache-2.0"
 readme = "README.md"
 packages = [{include = "statecraft"}]
-requires-python = ">=3.8"
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",

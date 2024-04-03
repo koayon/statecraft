@@ -6,7 +6,7 @@
 # Forward with generated state and show logits are different
 
 
-# POSSIBLE INTEGRATION TESTS
+# INTEGRATION TESTS FOR CLIENT
 # Test loading model from pretrained (Hugging Face)
 # Test loading state from local cache
 # Test loading state from test_db

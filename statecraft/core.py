@@ -291,7 +291,8 @@ class StatefulModel(PreTrainedModel):
         self.initial_state = state
 
     def reset_state(self) -> None:
-        self.initial_state = MambaCache(config=self.model.config, batch_size=1)
+        device = self.initial_state.device
+        self.initial_state = MambaCache(config=self.model.config, batch_size=1, device=device)
 
     # HELPER METHODS
 

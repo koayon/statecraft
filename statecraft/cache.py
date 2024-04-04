@@ -25,6 +25,10 @@ class MambaCache(HFMambaCache):
 
         return mamba_cache
 
+    @property
+    def device(self):
+        return self.ssm_states[0].device
+
     # def __iadd__(self, other: "MambaCache"):
     #     for layer_num, layer_cache in self.ssm_states.items():
     #         layer_cache += other.ssm_states[layer_num]

@@ -6,11 +6,12 @@ from typing import Any, Optional, Union
 import torch as t
 from einops import einsum
 from transformers import AutoTokenizer, MambaForCausalLM, PreTrainedModel
-from transformers.models.mamba.modeling_mamba import MambaCache, MambaCausalLMOutput
+from transformers.models.mamba.modeling_mamba import MambaCausalLMOutput
 
+from statecraft.cache import MambaCache
 from statecraft.client import client
 from statecraft.metadata import SSMStateMetadata
-from statecraft.utils import get_default_cache_dir
+from statecraft.utils import default_device, get_default_cache_dir
 
 
 def get_cached_state(
@@ -84,8 +85,12 @@ class StatefulModel(PreTrainedModel):
         super().__init__(model.config)
         if initial_state is None:
             initial_state = MambaCache(config=model.config, batch_size=1, device=device)
+
+        if device is not None:
+            initial_state = initial_state.to(device)
         self.initial_state: MambaCache = initial_state
-        self.model = model
+        torch_device = default_device() if device is None else t.device(device)
+        self.model: MambaForCausalLM = model.to(device=torch_device)  # type: ignore
         self.model_name = model_name
 
     def forward(
@@ -113,7 +118,7 @@ class StatefulModel(PreTrainedModel):
         device: Optional[str] = None,
     ) -> "StatefulModel":
         # Load model from Hugging Face
-        model: MambaForCausalLM = MambaForCausalLM.from_pretrained(model_name)  # type: ignore
+        model: MambaForCausalLM = MambaForCausalLM.from_pretrained(model_name, device_map=device)  # type: ignore
 
         # Load initial state
         if initial_state_name is not None:
@@ -121,23 +126,31 @@ class StatefulModel(PreTrainedModel):
         else:
             initial_state = None
 
-        stateful_model = cls(model=model, initial_state=initial_state, model_name=model_name)
+        stateful_model = cls(
+            model=model, initial_state=initial_state, model_name=model_name, device=device
+        )
         return stateful_model
 
     def build_state(
         self,
         input_ids: t.Tensor,
-        save_state: bool,
         cache_params: Optional[MambaCache] = None,
+        model_name: Optional[str] = None,
     ) -> MambaCache:
+        # Check if model_name is provided
+        if model_name is None and self.model_name is None:
+            raise ValueError("Model name must be provided.")
+        elif model_name is None:
+            model_name = self.model_name
+        assert model_name is not None
+
         out: MambaCausalLMOutput = self.forward(input_ids=input_ids, cache_params=cache_params)
         assert out.cache_params is not None
-        if save_state:
-            pass
-        return out.cache_params
 
-    def rag_generate(self, input_str: str) -> str:
-        raise NotImplementedError
+        mamba_cache = MambaCache.from_hf_cache(
+            hf_cache=out.cache_params, model_name=model_name
+        )
+        return mamba_cache
 
     @classmethod
     def combine_states(
@@ -278,7 +291,8 @@ class StatefulModel(PreTrainedModel):
         self.initial_state = state
 
     def reset_state(self) -> None:
-        self.initial_state = MambaCache(config=self.model.config, batch_size=1, device=None)
+        device = self.initial_state.device
+        self.initial_state = MambaCache(config=self.model.config, batch_size=1, device=device)
 
     # HELPER METHODS
 

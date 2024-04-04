@@ -6,13 +6,12 @@ from typing import Any, Optional, Union
 import torch as t
 from einops import einsum
 from transformers import AutoTokenizer, MambaForCausalLM, PreTrainedModel
-from transformers.models import mamba
 from transformers.models.mamba.modeling_mamba import MambaCausalLMOutput
 
 from statecraft.cache import MambaCache
 from statecraft.client import client
 from statecraft.metadata import SSMStateMetadata
-from statecraft.utils import get_default_cache_dir
+from statecraft.utils import default_device, get_default_cache_dir
 
 
 def get_cached_state(
@@ -90,7 +89,8 @@ class StatefulModel(PreTrainedModel):
         if device is not None:
             initial_state = initial_state.to(device)
         self.initial_state: MambaCache = initial_state
-        self.model = model
+        torch_device = default_device() if device is None else t.device(device)
+        self.model: MambaForCausalLM = model.to(device=torch_device)  # type: ignore
         self.model_name = model_name
 
     def forward(

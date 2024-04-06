@@ -41,8 +41,16 @@ class MambaCache(HFMambaCache):
         cls, hf_cache: HFMambaCache, model_name: str, device: Optional[str] = None
     ) -> "MambaCache":
         mamba_config = MambaConfig.from_pretrained(model_name)
+
         batch_size = hf_cache.ssm_states[0].shape[0]
 
+        # Initialise the Mamba cache
         mamba_cache = cls(config=mamba_config, batch_size=batch_size, device=device)
+
+        # Copy the states from the HF cache to the Mamba cache
+        mamba_cache.conv_states = hf_cache.conv_states
+        mamba_cache.ssm_states = hf_cache.ssm_states
+        mamba_cache.seqlen_offset = hf_cache.seqlen_offset
+        mamba_cache.dtype = hf_cache.dtype
 
         return mamba_cache

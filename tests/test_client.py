@@ -1,6 +1,7 @@
-from statecraft.client import client
 from statecraft.core import SSMStateMetadata
 from statecraft.utils import get_default_cache_dir
+
+from .client_fixture import client
 
 if __name__ == "__main__":
     # state = client.get_state("state-spaces/mamba-130m-hf", "koayon/state-a")

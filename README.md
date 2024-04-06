@@ -26,11 +26,11 @@ pip install statecraft
 - Use `model.build_state()` to generate a new state from your context.
 - Use `model.save_state()` or `model.save_current_state` to save your state to a file so that you can use it again in the future.
 - With `model.load_state()` you can load a state either from a file or from the community repository.
+  - To see the states that are available in the community repository, visit the [Statecraft Hub](https://statecraft-app.vercel.app/) or use `statecraft.list_states()`.
 
 ## 🔍 Coming Soon
 
 - Right now we only support Mamba models (in all sizes), as more SSMs and Stateful models begin to come onto Huggingface, we will support them too.
-- The statecraft community repository is available right now and a front-end for this is coming so you can view all of the community-contributed states. Right now, you can see the available states by running `statecraft.show_available_states()`.
 - We're also looking at RAG-like generation approaches where you automatically retrieve the `state` instead of `context`, watch this space 👀
 
 ## 🧙 Conceptually

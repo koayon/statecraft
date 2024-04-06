@@ -26,7 +26,7 @@ pip install statecraft
 - Use `model.build_state()` to generate a new state from your context.
 - Use `model.save_state()` or `model.save_current_state` to save your state to a file so that you can use it again in the future.
 - With `model.load_state()` you can load a state either from a file or from the community repository.
-  - To see the states that are available in the community repository, visit the [Statecraft Hub](https://statecraft-app.vercel.app/) or use `statecraft.list_states()`.
+  - To see the states that are available in the community repository, visit the [Statecraft Hub](https://statecrafthub.com) or use `statecraft.list_states()`.
 
 ## 🔍 Coming Soon
 

@@ -6,6 +6,7 @@ from typing import Any, Optional, Union
 import torch as t
 from einops import einsum
 from transformers import AutoTokenizer, MambaForCausalLM, PreTrainedModel
+from transformers.generation.utils import GenerateOutput
 from transformers.models.mamba.modeling_mamba import MambaCausalLMOutput
 
 from statecraft.cache import MambaCache
@@ -108,6 +109,12 @@ class StatefulModel(PreTrainedModel):
         out: MambaCausalLMOutput = self.model(
             input_ids=input_ids, cache_params=cache_params, use_cache=True
         )
+        return out
+
+    def generate(
+        self, input_ids: t.Tensor, max_length: int = 50, **kwargs
+    ) -> Union[t.LongTensor, GenerateOutput]:
+        out = self.model.generate(input_ids=input_ids, max_length=max_length)
         return out
 
     @classmethod

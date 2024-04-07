@@ -1,3 +1,4 @@
+import io
 import json
 import os
 from pathlib import Path
@@ -7,12 +8,21 @@ import torch as t
 from einops import einsum
 from transformers import AutoTokenizer, MambaForCausalLM, PreTrainedModel
 from transformers.generation.utils import GenerateOutput
+from transformers.models.mamba.modeling_mamba import MambaCache as HFMambaCache
 from transformers.models.mamba.modeling_mamba import MambaCausalLMOutput
 
 from statecraft.cache import MambaCache
 from statecraft.client import client
 from statecraft.metadata import SSMStateMetadata
 from statecraft.utils import default_device, get_default_cache_dir
+
+
+class CantFindLocalStateError(Exception):
+    pass
+
+
+class CorruptedMetadataError(Exception):
+    pass
 
 
 def get_cached_state(
@@ -31,7 +41,9 @@ def get_cached_state(
 
     is_local = os.path.isdir(base_path)
     if not is_local:
-        raise ValueError("Path to saved state must be a directory which exists on the system")
+        raise CantFindLocalStateError(
+            "Path to saved state must be a directory which exists on the system"
+        )
 
     state = t.load(os.path.join(base_path, "state.pt"))
 
@@ -40,7 +52,7 @@ def get_cached_state(
 
     for key in ("state_name", "model_name", "prompt"):
         if key not in metadata_dict:
-            raise ValueError(f"Metadata must contain key: {key}")
+            raise CorruptedMetadataError(f"Metadata must contain key: {key}")
 
     metadata = SSMStateMetadata(
         state_name=metadata_dict.get("state_name"),  # type: ignore
@@ -52,6 +64,11 @@ def get_cached_state(
 
     print("Metadata: \n", metadata)
     print(f"State loaded from {base_path}")
+
+    if not isinstance(state, MambaCache) and isinstance(state, HFMambaCache):
+        state = MambaCache.from_hf_cache(hf_cache=state, model_name=model_name)
+    elif isinstance(state, bytes):
+        raise ValueError("State is not a MambaCache object.")
 
     return state, metadata, base_path
 
@@ -89,6 +106,7 @@ class StatefulModel(PreTrainedModel):
 
         if device is not None:
             initial_state = initial_state.to(device)
+
         self.initial_state: MambaCache = initial_state
         torch_device = default_device() if device is None else t.device(device)
         self.model: MambaForCausalLM = model.to(device=torch_device)  # type: ignore
@@ -99,6 +117,7 @@ class StatefulModel(PreTrainedModel):
         input_ids: t.Tensor,
         cache_params: Optional[MambaCache] = None,
         reset_sequence_offset: bool = True,
+        **kwargs,
     ) -> MambaCausalLMOutput:
         # TODO: Deal with change in batch size
         if cache_params is None:
@@ -107,14 +126,27 @@ class StatefulModel(PreTrainedModel):
             cache_params = self._reset_state_offset(cache_params)
 
         out: MambaCausalLMOutput = self.model(
-            input_ids=input_ids, cache_params=cache_params, use_cache=True
+            input_ids=input_ids, cache_params=cache_params, use_cache=True, **kwargs
         )
         return out
 
     def generate(
-        self, input_ids: t.Tensor, max_length: int = 50, **kwargs
+        self,
+        input_ids: t.Tensor,
+        max_length: int = 50,
+        cache_params: Optional[MambaCache] = None,
+        reset_sequence_offset: bool = True,
+        **kwargs,
     ) -> Union[t.LongTensor, GenerateOutput]:
-        out = self.model.generate(input_ids=input_ids, max_length=max_length)
+        if cache_params is None:
+            cache_params = self.initial_state
+        if reset_sequence_offset:
+            cache_params = self._reset_state_offset(cache_params)
+
+        out = self.model.generate(
+            input_ids=input_ids, max_length=max_length, cache_params=cache_params, **kwargs
+        )
+
         return out
 
     @classmethod
@@ -316,9 +348,16 @@ class StatefulModel(PreTrainedModel):
 
         os.makedirs(base_path, exist_ok=False)
 
+        byte_stream = io.BytesIO(state_bytes)
+        try:
+            state = t.load(byte_stream)
+        except Exception as e:
+            raise IOError(
+                f"Failed to parse downloaded state from bytes.",
+            )
+
         state_path = os.path.join(base_path, "state.pt")
-        with open(state_path, "wb") as f:
-            f.write(state_bytes)
+        t.save(state, state_path)
 
         metadata_path = os.path.join(base_path, "metadata.json")
         metadata = SSMStateMetadata(
@@ -342,7 +381,17 @@ class StatefulModel(PreTrainedModel):
                 cache_dir=cache_dir,
             )
             return state
+        except CantFindLocalStateError as e:
+            print(
+                f"State {state_name_path} not found in local cache. Trying to load from server."
+            )
+            pass
+        except CorruptedMetadataError as e:
+            raise ValueError(
+                f"Metadata for state {state_name_path} is corrupted. Try deleting the file and running again."
+            )
         except Exception as e:
+            print(e)
             pass
 
         try:  # Try loading from server

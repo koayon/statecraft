@@ -16,4 +16,6 @@ class StateOut(BaseModel):
     updated_at: datetime
 
 
-StatesOut = list[StateOut]
+class StatesOut(BaseModel):
+    states: list[StateOut]
+    total_count: int

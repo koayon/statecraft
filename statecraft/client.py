@@ -18,7 +18,7 @@ class StatecraftClient:
 
     def __init__(self, base_url: str = BASE_URL):
         self.base_url = base_url
-        self.states_url = f"{base_url}/states/"
+        self.states_url = f"{base_url}/states"
 
     def get_state(self, model_name: str, state_name: str) -> bytes:
         full_url = f"{self.states_url}/{model_name}/{state_name}"
@@ -37,7 +37,7 @@ class StatecraftClient:
         metadata: SSMStateMetadata,
         state_path: Union[Path, str],
     ) -> str:
-        url = self.states_url
+        url = f"{self.states_url}/"
 
         print(url)
 
@@ -88,8 +88,10 @@ class StatecraftClient:
             "model_short_name": model_short_name,
         }
 
+        url = f"{self.states_url}/"
+
         response = requests.get(
-            self.states_url,
+            url,
             params=query_params,
         )
         print(response.text)

@@ -1,4 +1,4 @@
-# 🪄 Statecraft -  Store, manage and remix states for SSMs and Stateful models
+# 🪄 Statecraft -  Load, store and remix states for SSMs, Mamba and Stateful models
 
 ## TL;DR
 

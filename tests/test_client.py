@@ -1,6 +1,6 @@
-from statecraft.client import client
 from statecraft.core import SSMStateMetadata
 from statecraft.utils import get_default_cache_dir
+from tests.client_fixture import client
 
 if __name__ == "__main__":
     # state = client.get_state("state-spaces/mamba-130m-hf", "koayon/state-a")
@@ -14,11 +14,11 @@ if __name__ == "__main__":
     response_str = client.upload_state(
         SSMStateMetadata(
             model_name="state-spaces/mamba-130m-hf",
-            state_name="first-state",
+            state_name="rhyme-state",
             prompt="Fee fi fo fum, I smell the blood of an Englishman",
             description="Children's tales",
         ),
-        state_path=f"{cache_dir}state-spaces/mamba-130m-hf/CURRENT_USER/test-state/state.pt",  # state_path="/Users/Kola/Documents/VSCode/open_source/statecraft/a.pt",
+        state_path=f"{cache_dir}state-spaces/mamba-130m-hf/CURRENT_USER/test-state/state.pt",
     )
 
     print(response_str)

@@ -10,18 +10,18 @@ from statecraft.models import StateOut, StatesOut
 from statecraft.user_attributes import UserAttributes
 from statecraft.utils import get_default_cache_dir
 
-BASE_URL = "https://www.api.statecrafthub.com/"
-LOCAL_URL = "http://localhost/"
+BASE_URL = "https://www.api.statecrafthub.com"
+LOCAL_URL = "http://localhost"
 
 
 class StatecraftClient:
 
     def __init__(self, base_url: str = BASE_URL):
         self.base_url = base_url
-        self.states_url = f"{base_url}states/"
+        self.states_url = f"{base_url}/states/"
 
     def get_state(self, model_name: str, state_name: str) -> bytes:
-        full_url = os.path.join(self.states_url, model_name, state_name)
+        full_url = f"{self.states_url}/{model_name}/{state_name}"
 
         response = requests.get(full_url)
 

@@ -93,11 +93,19 @@ class StatecraftClient:
             params=query_params,
         )
         print(response.text)
-        parsed_response: list[dict[str, str]] = response.json()  # StatesOut
+        parsed_response = response.json()  # StatesOut
+
+        if isinstance(parsed_response, list):  # Previous API version
+            states_out = StatesOut(states=parsed_response, total_count=len(parsed_response))
+        else:  # Current API version
+            states_out = StatesOut(
+                states=parsed_response.get("states"),
+                total_count=parsed_response.get("total_count"),
+            )
 
         states_list = [
-            f'{response_state_dict["model_name"]}/{response_state_dict["state_name"]}'
-            for response_state_dict in parsed_response
+            f"{response_state_dict.model_name}/{response_state_dict.state_name}"
+            for response_state_dict in states_out.states
         ]
 
         return states_list

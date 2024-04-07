@@ -401,7 +401,7 @@ class StatefulModel(PreTrainedModel):
                 f"Failed to load state from local cache and server.",
                 f"Model name: {model_name}",
                 f"State name: {state_name_path}",
-                e,
+                str(e),
             )
 
         try:

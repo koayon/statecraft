@@ -30,7 +30,7 @@ python-dotenv = "^0.19.1"
 Requests = "^2.31.0"
 torch = "^2.1.2"
 transformers = "^4.39.3"
-typer = "^0.7.0"
+typer = ">=0.7,<0.13"
 accelerate = "^0.29.1"
 
 

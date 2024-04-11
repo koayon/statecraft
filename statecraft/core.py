@@ -172,6 +172,46 @@ class StatefulModel(PreTrainedModel):
 
     def build_state(
         self,
+        prompt: Optional[str] = None,
+        input_ids: Optional[t.Tensor] = None,
+        cache_params: Optional[MambaCache] = None,
+        model_name: Optional[str] = None,
+    ) -> MambaCache:
+        # Check if model_name is provided
+        if model_name is None and self.model_name is None:
+            raise ValueError("Model name must be provided.")
+        elif model_name is None:
+            model_name = self.model_name
+        assert model_name is not None
+
+        if prompt is None and input_ids is None:
+            raise ValueError("Either prompt or input_ids must be provided.")
+
+        if input_ids is not None:
+            return self._build_state(
+                input_ids=input_ids, cache_params=cache_params, model_name=model_name
+            )
+
+        tokeniser = AutoTokenizer.from_pretrained(model_name)
+        tokenised_ids: t.Tensor = tokeniser(prompt, return_tensors="pt")["input_ids"]  # type: ignore
+
+        # TODO: Chunk tokenization
+
+        cache_params = cache_params or MambaCache(
+            config=self.model.config, batch_size=1, device=self.initial_state.device
+        )
+
+        batch, seq_len = tokenised_ids.shape
+        for i in range(0, seq_len, 512):
+            chunk = tokenised_ids[:, i : i + 512]
+            cache_params = self._build_state(
+                input_ids=chunk, cache_params=cache_params, model_name=model_name
+            )
+
+        return cache_params
+
+    def _build_state(
+        self,
         input_ids: t.Tensor,
         cache_params: Optional[MambaCache] = None,
         model_name: Optional[str] = None,

@@ -1,7 +1,7 @@
 import torch as t
 from transformers import AutoTokenizer
 
-from examples.prompts import MAMBA_ABSTRACT, MAMBA_WIKI
+from examples.prompts import MAMBA_PAPER, MAMBA_WIKI
 from statecraft import StatefulModel, upload_state
 
 MODEL_NAME: str = "state-spaces/mamba-2.8b-hf"
@@ -34,7 +34,7 @@ if __name__ == "__main__":
 
     # Build up the two states
     build_and_generate(
-        prompt=MAMBA_ABSTRACT,
+        prompt=MAMBA_PAPER,
         state_name="mamba_abstract_state",
     )
 

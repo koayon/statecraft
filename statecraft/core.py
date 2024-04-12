@@ -169,7 +169,7 @@ class StatefulModel(PreTrainedModel):
         stateful_model = cls(
             model=model, initial_state=initial_state, model_name=model_name, device=device
         )
-        return stateful_model
+        return stateful_model.to(device)
 
     def build_state(
         self,
@@ -179,7 +179,7 @@ class StatefulModel(PreTrainedModel):
         tags: Optional[list[str]] = None,
         cache_params: Optional[MambaCache] = None,
         model_name: Optional[str] = None,
-        chunk_size: int = 128,
+        chunk_size: int = 1024,
     ) -> tuple[MambaCache, SSMStateMetadata]:
         # Check if model_name is provided
         model_name = model_name or self.model_name
@@ -201,12 +201,21 @@ class StatefulModel(PreTrainedModel):
         num_chunks = math.ceil(seq_len / chunk_size)
         for i in range(0, seq_len, chunk_size):
             print(f"chunk {i//chunk_size}/{num_chunks} of {num_chunks}")
-            chunk = tokenised_ids[:, i : i + chunk_size]
+
+            chunk = tokenised_ids[:, i : i + chunk_size].to(self.device)
+
             cache_params = self._build_state(
                 input_ids=chunk.to(self.device),
                 cache_params=cache_params.to(self.device),
                 model_name=model_name,
             )
+
+            # Move the tensors back to CPU and delete them
+            chunk = chunk.to('cpu')
+            del chunk
+
+            # Clear the GPU cache
+            t.cuda.empty_cache()
 
         metadata = SSMStateMetadata(
             state_name=state_name,

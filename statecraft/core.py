@@ -195,6 +195,9 @@ class StatefulModel(PreTrainedModel):
         tokeniser = AutoTokenizer.from_pretrained(model_name)
         tokenised_ids: t.Tensor = tokeniser(prompt, return_tensors="pt")["input_ids"]  # type: ignore
 
+        print("Tokenised ids!")
+        print("num_tokens", tokenised_ids.shape[1])
+
         # TODO: Chunk tokenization
 
         cache_params = cache_params or MambaCache(
@@ -202,10 +205,13 @@ class StatefulModel(PreTrainedModel):
         )
 
         batch, seq_len = tokenised_ids.shape
-        for i in range(0, seq_len, 512):
-            chunk = tokenised_ids[:, i : i + 512]
+        for i in range(0, seq_len, 128):
+            print(f"chunk {i}")
+            chunk = tokenised_ids[:, i : i + 128]
             cache_params = self._build_state(
-                input_ids=chunk, cache_params=cache_params, model_name=model_name
+                input_ids=chunk.to(self.device),
+                cache_params=cache_params.to(self.device),
+                model_name=model_name,
             )
 
         return cache_params

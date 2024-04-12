@@ -172,31 +172,23 @@ class StatefulModel(PreTrainedModel):
 
     def build_state(
         self,
-        prompt: Optional[str] = None,
-        input_ids: Optional[t.Tensor] = None,
+        state_name: str,
+        prompt: str,
+        description: Optional[str] = None,
+        tags: Optional[list[str]] = None,
         cache_params: Optional[MambaCache] = None,
         model_name: Optional[str] = None,
-    ) -> MambaCache:
+        chunk_size: int = 128,
+    ) -> tuple[MambaCache, SSMStateMetadata]:
         # Check if model_name is provided
-        if model_name is None and self.model_name is None:
+        model_name = model_name or self.model_name
+        if model_name is None:
             raise ValueError("Model name must be provided.")
-        elif model_name is None:
-            model_name = self.model_name
-        assert model_name is not None
-
-        if prompt is None and input_ids is None:
-            raise ValueError("Either prompt or input_ids must be provided.")
-
-        if input_ids is not None:
-            return self._build_state(
-                input_ids=input_ids, cache_params=cache_params, model_name=model_name
-            )
 
         tokeniser = AutoTokenizer.from_pretrained(model_name)
         tokenised_ids: t.Tensor = tokeniser(prompt, return_tensors="pt")["input_ids"]  # type: ignore
 
-        print("Tokenised ids!")
-        print("num_tokens", tokenised_ids.shape[1])
+        print("Tokenised ids shape: ", tokenised_ids.shape)
 
         # TODO: Chunk tokenization
 
@@ -205,16 +197,24 @@ class StatefulModel(PreTrainedModel):
         )
 
         batch, seq_len = tokenised_ids.shape
-        for i in range(0, seq_len, 128):
-            print(f"chunk {i}")
-            chunk = tokenised_ids[:, i : i + 128]
+        for i in range(0, seq_len, chunk_size):
+            print(f"chunk {i/chunk_size}/{seq_len/chunk_size} of {seq_len/chunk_size}")
+            chunk = tokenised_ids[:, i : i + chunk_size]
             cache_params = self._build_state(
                 input_ids=chunk.to(self.device),
                 cache_params=cache_params.to(self.device),
                 model_name=model_name,
             )
 
-        return cache_params
+        metadata = SSMStateMetadata(
+            state_name=state_name,
+            prompt=prompt,
+            model_name=model_name,
+            description=description,
+            keywords=tags,
+        )
+
+        return cache_params, metadata
 
     def _build_state(
         self,

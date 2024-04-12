@@ -1,8 +1,8 @@
 import torch as t
-from transformers import AutoTokenizer, PreTrainedTokenizer, PreTrainedTokenizerBase
+from transformers import AutoTokenizer
 
 from examples.prompts import MAMBA_ABSTRACT, MAMBA_WIKI
-from statecraft import SSMStateMetadata, StatefulModel, upload_state
+from statecraft import StatefulModel, upload_state
 
 MODEL_NAME: str = "state-spaces/mamba-2.8b-hf"
 
@@ -11,8 +11,8 @@ def build_and_generate(prompt: str, state_name: str):
     state, metadata = model.build_state(prompt=prompt, state_name=state_name)
     print(f"{state_name} state built")
 
-    # model.save_state(mamba_abstract_state, metadata=metadata)
-    # upload_state(path="mamba_abstract_state", model_name=model_name)
+    # model.save_state(state, metadata=metadata)
+    # upload_state(path=state_name, model_name=MODEL_NAME)
 
     # Generate Mamba SSM output
     abstract_output_ids = model.generate(

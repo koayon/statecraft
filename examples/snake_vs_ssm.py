@@ -33,7 +33,6 @@ if __name__ == "__main__":
     ]  # type: ignore
 
     # Build up the two states
-
     build_and_generate(
         prompt=MAMBA_ABSTRACT,
         state_name="mamba_abstract_state",

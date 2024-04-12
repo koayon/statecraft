@@ -240,7 +240,9 @@ class StatefulModel(PreTrainedModel):
             model_name = self.model_name
         assert model_name is not None
 
+        print("about to forward")
         out: MambaCausalLMOutput = self.forward(input_ids=input_ids, cache_params=cache_params)
+        print("forwarded")
         assert out.cache_params is not None
 
         mamba_cache = MambaCache.from_hf_cache(

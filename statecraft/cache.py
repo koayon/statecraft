@@ -8,7 +8,7 @@ from transformers.models.mamba.modeling_mamba import MambaConfig
 
 class MambaCache(HFMambaCache):
     def to(self, device):
-        mamba_cache = copy.deepcopy(self)
+        mamba_cache = copy.copy(self)
 
         ssm_states = {
             layer_num: layer_cache.to(device)

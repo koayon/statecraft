@@ -25,7 +25,7 @@ def build_and_generate(prompt: str, state_name: str):
 
 
 if __name__ == "__main__":
-    model = StatefulModel.from_pretrained(model_name=MODEL_NAME, device="cpu")
+    model = StatefulModel.from_pretrained(model_name=MODEL_NAME)
     tokeniser = AutoTokenizer.from_pretrained(MODEL_NAME)
 
     question_input_ids: t.Tensor = tokeniser("In summary,", return_tensors="pt")[

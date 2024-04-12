@@ -3,6 +3,7 @@ import json
 import os
 from pathlib import Path
 from typing import Any, Optional, Union
+import math
 
 import torch as t
 from einops import einsum
@@ -197,8 +198,9 @@ class StatefulModel(PreTrainedModel):
         )
 
         batch, seq_len = tokenised_ids.shape
+        num_chunks = math.ceil(seq_len / chunk_size)
         for i in range(0, seq_len, chunk_size):
-            print(f"chunk {i/chunk_size}/{seq_len/chunk_size} of {seq_len/chunk_size}")
+            print(f"chunk {i//chunk_size}/{num_chunks} of {num_chunks}")
             chunk = tokenised_ids[:, i : i + chunk_size]
             cache_params = self._build_state(
                 input_ids=chunk.to(self.device),

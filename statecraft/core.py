@@ -4,6 +4,10 @@ import os
 from pathlib import Path
 from typing import Any, Optional, Union
 import math
+import gc
+from torch.profiler import profile, record_function, ProfilerActivity
+from tqdm import tqdm
+
 
 import torch as t
 from einops import einsum
@@ -144,6 +148,21 @@ class StatefulModel(PreTrainedModel):
         if reset_sequence_offset:
             cache_params = self._reset_state_offset(cache_params)
 
+        # Check dtype for all tensors:
+        # print("input_ids dtype: ", input_ids.dtype)
+        # for key, value in cache_params.conv_states.items():
+        #     for tensor in value:
+        #         print(f"conv_states[{key}] dtype: ", tensor.dtype)
+
+        # for key, value in cache_params.ssm_states.items():
+        #     for tensor in value:
+        #         print(f"conv_states[{key}] dtype: ", tensor.dtype)
+
+        # assert False
+
+
+
+
         out = self.model.generate(
             input_ids=input_ids, max_length=max_length, cache_params=cache_params, **kwargs
         )
@@ -179,7 +198,7 @@ class StatefulModel(PreTrainedModel):
         tags: Optional[list[str]] = None,
         cache_params: Optional[MambaCache] = None,
         model_name: Optional[str] = None,
-        chunk_size: int = 1024,
+        chunk_size: int = 256,
     ) -> tuple[MambaCache, SSMStateMetadata]:
         # Check if model_name is provided
         model_name = model_name or self.model_name
@@ -199,8 +218,8 @@ class StatefulModel(PreTrainedModel):
 
         batch, seq_len = tokenised_ids.shape
         num_chunks = math.ceil(seq_len / chunk_size)
-        for i in range(0, seq_len, chunk_size):
-            print(f"chunk {i//chunk_size}/{num_chunks} of {num_chunks}")
+        for i in tqdm(range(0, seq_len, chunk_size)):
+            # print(f"chunk {i//chunk_size}/{num_chunks} of {num_chunks}")
 
             chunk = tokenised_ids[:, i : i + chunk_size].to(self.device)
 
@@ -240,9 +259,24 @@ class StatefulModel(PreTrainedModel):
             model_name = self.model_name
         assert model_name is not None
 
-        print("about to forward")
-        out: MambaCausalLMOutput = self.forward(input_ids=input_ids, cache_params=cache_params)
-        print("forwarded")
+        # print("about to forward")
+        with t.no_grad():
+            out: MambaCausalLMOutput = self.forward(input_ids=input_ids, cache_params=cache_params)
+        # print(prof.key_averages().table(sort_by="cuda_memory_usage", row_limit=10))
+        # out: MambaCausalLMOutput = self.forward(input_ids=input_ids, cache_params=cache_params)
+        print("memory allocated after forward:", t.cuda.memory_allocated()/1024//1024, "MB")
+        # Show memory breakdown
+        # for obj in gc.get_objects():
+        # # for name, obj in locals().items():
+        #     try:
+        #         if t.is_tensor(obj) or (hasattr(obj, 'data') and t.is_tensor(obj.data)):
+        #             print(type(obj), obj.size(), obj.device)
+        #     except:
+        #         pass
+
+        # assert False
+
+        # print("forwarded")
         assert out.cache_params is not None
 
         mamba_cache = MambaCache.from_hf_cache(
@@ -390,7 +424,8 @@ class StatefulModel(PreTrainedModel):
 
     def reset_state(self) -> None:
         device = self.initial_state.device
-        self.initial_state = MambaCache(config=self.model.config, batch_size=1, device=device)
+        dtype = self.initial_state.dtype
+        self.initial_state = MambaCache(config=self.model.config, batch_size=1, device=device, dtype=dtype)
 
     # HELPER METHODS
 

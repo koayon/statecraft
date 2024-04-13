@@ -16,10 +16,14 @@ def build_and_generate(prompt: str, state_name: str):
 
     print()
 
+    state.seqlen_offset = 1
+
+    model.update_state(state)
+
     # Generate Mamba SSM output
     output_ids = model.generate(
-        question_input_ids.to(model.device), cache_params=state
-    )
+        question_input_ids.to(model.device), reset_sequence_offset = False, max_length=10, num_return_sequences=1, do_sample=False)
+
     print(tokeniser.decode(output_ids[0], skip_special_tokens=True))
     print(metadata)
 

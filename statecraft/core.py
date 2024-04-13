@@ -159,12 +159,13 @@ class StatefulModel(PreTrainedModel):
         #         print(f"conv_states[{key}] dtype: ", tensor.dtype)
 
         # assert False
-
-
+        print(cache_params.conv_states[0][0].dtype)
+        cache_params = cache_params.to_dtype(self.model.dtype)
+        print(cache_params.conv_states[0][0].dtype)
 
 
         out = self.model.generate(
-            input_ids=input_ids, max_length=max_length, cache_params=cache_params, **kwargs
+            input_ids=input_ids, max_length=max_length, cache_params=cache_params, use_cache = True, **kwargs
         )
 
         return out

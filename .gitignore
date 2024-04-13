@@ -164,3 +164,4 @@ cython_debug/
 .DS_Store
 scratch/
 tests/test_plan.py
+myenv/

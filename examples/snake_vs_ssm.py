@@ -14,11 +14,13 @@ def build_and_generate(prompt: str, state_name: str):
     # model.save_state(state, metadata=metadata)
     # upload_state(path=state_name, model_name=MODEL_NAME)
 
+    print()
+
     # Generate Mamba SSM output
-    abstract_output_ids = model.generate(
+    output_ids = model.generate(
         question_input_ids.to(model.device), cache_params=state
     )
-    print(tokeniser.decode(abstract_output_ids[0], skip_special_tokens=True))
+    print(tokeniser.decode(output_ids[0], skip_special_tokens=True))
     print(metadata)
 
     model.reset_state()
@@ -26,7 +28,10 @@ def build_and_generate(prompt: str, state_name: str):
 
 if __name__ == "__main__":
     model = StatefulModel.from_pretrained(model_name=MODEL_NAME)
+    model = model.to(t.device("cuda"))
     tokeniser = AutoTokenizer.from_pretrained(MODEL_NAME)
+
+    print("memory allocated",  t.cuda.memory_allocated()/1024//1024, "MB")
 
     question_input_ids: t.Tensor = tokeniser("In summary,", return_tensors="pt")[
         "input_ids"

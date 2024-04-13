@@ -20,6 +20,7 @@ class SSMStateMetadata:
         truncated_prompt = self._truncate(self.prompt, 50)
         truncated_description = self._truncate(self.description, 50) if self.description else None
         return f"""SSMStateMetadata(state_name={self.state_name}, model_name={self.model_name},
-prompt={truncated_prompt},
-description={truncated_description},
-keywords={self.keywords})"""
+    prompt={truncated_prompt},
+    description={truncated_description},
+    keywords={self.keywords}
+)"""

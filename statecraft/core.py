@@ -159,9 +159,9 @@ class StatefulModel(PreTrainedModel):
         #         print(f"conv_states[{key}] dtype: ", tensor.dtype)
 
         # assert False
-        print(cache_params.conv_states[0][0].dtype)
+        # print(cache_params.conv_states[0][0].dtype)
         cache_params = cache_params.to_dtype(self.model.dtype)
-        print(cache_params.conv_states[0][0].dtype)
+        # print(cache_params.conv_states[0][0].dtype)
 
 
         out = self.model.generate(
@@ -217,6 +217,9 @@ class StatefulModel(PreTrainedModel):
             config=self.model.config, batch_size=1, device=self.initial_state.device
         )
 
+        # print(self.device)
+        # print(self.model.device)
+
         batch, seq_len = tokenised_ids.shape
         num_chunks = math.ceil(seq_len / chunk_size)
         for i in tqdm(range(0, seq_len, chunk_size)):
@@ -265,7 +268,7 @@ class StatefulModel(PreTrainedModel):
             out: MambaCausalLMOutput = self.forward(input_ids=input_ids, cache_params=cache_params)
         # print(prof.key_averages().table(sort_by="cuda_memory_usage", row_limit=10))
         # out: MambaCausalLMOutput = self.forward(input_ids=input_ids, cache_params=cache_params)
-        print("memory allocated after forward:", t.cuda.memory_allocated()/1024//1024, "MB")
+        # print("memory allocated after forward:", t.cuda.memory_allocated()/1024//1024, "MB")
         # Show memory breakdown
         # for obj in gc.get_objects():
         # # for name, obj in locals().items():

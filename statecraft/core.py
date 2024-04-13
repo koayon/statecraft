@@ -199,6 +199,7 @@ class StatefulModel(PreTrainedModel):
         tags: Optional[list[str]] = None,
         cache_params: Optional[MambaCache] = None,
         model_name: Optional[str] = None,
+        prompt_reference: Optional[str] = None,
         chunk_size: int = 256,
     ) -> tuple[MambaCache, SSMStateMetadata]:
         # Check if model_name is provided
@@ -242,7 +243,7 @@ class StatefulModel(PreTrainedModel):
 
         metadata = SSMStateMetadata(
             state_name=state_name,
-            prompt=prompt,
+            prompt=prompt_reference or prompt,
             model_name=model_name,
             description=description,
             keywords=tags,

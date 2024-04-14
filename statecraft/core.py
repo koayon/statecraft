@@ -1,11 +1,13 @@
 import io
 import json
+import math
 import os
 from pathlib import Path
 from typing import Any, Optional, Union
 
 import torch as t
 from einops import einsum
+from tqdm import tqdm
 from transformers import AutoTokenizer, MambaForCausalLM, PreTrainedModel
 from transformers.generation.utils import GenerateOutput
 from transformers.models.mamba.modeling_mamba import MambaCache as HFMambaCache
@@ -45,7 +47,7 @@ def get_cached_state(
             "Path to saved state must be a directory which exists on the system"
         )
 
-    state = t.load(os.path.join(base_path, "state.pt"))
+    state = t.load(os.path.join(base_path, "state.pt"), map_location=default_device())
 
     with open(os.path.join(base_path, "metadata.json"), "r") as json_file:
         metadata_dict: dict[str, Any] = json.load(json_file)
@@ -143,8 +145,14 @@ class StatefulModel(PreTrainedModel):
         if reset_sequence_offset:
             cache_params = self._reset_state_offset(cache_params)
 
+        cache_params = cache_params.to_dtype(self.model.dtype)
+
         out = self.model.generate(
-            input_ids=input_ids, max_length=max_length, cache_params=cache_params, **kwargs
+            input_ids=input_ids,
+            max_length=max_length,
+            cache_params=cache_params,
+            use_cache=True,
+            **kwargs,
         )
 
         return out
@@ -168,9 +176,66 @@ class StatefulModel(PreTrainedModel):
         stateful_model = cls(
             model=model, initial_state=initial_state, model_name=model_name, device=device
         )
-        return stateful_model
+        return stateful_model.to(device)  # type: ignore
 
     def build_state(
+        self,
+        state_name: str,
+        prompt: str,
+        description: Optional[str] = None,
+        tags: Optional[list[str]] = None,
+        cache_params: Optional[MambaCache] = None,
+        model_name: Optional[str] = None,
+        prompt_reference: Optional[str] = None,
+        chunk_size: int = 256,
+    ) -> tuple[MambaCache, SSMStateMetadata]:
+        # Check if model_name is provided
+        model_name = model_name or self.model_name
+        if model_name is None:
+            raise ValueError("Model name must be provided.")
+
+        tokeniser = AutoTokenizer.from_pretrained(model_name)
+        tokenised_ids: t.Tensor = tokeniser(prompt, return_tensors="pt")["input_ids"]  # type: ignore
+
+        print("Tokenised ids shape: ", tokenised_ids.shape)
+
+        # TODO: Chunk tokenization
+
+        cache_params = cache_params or MambaCache(
+            config=self.model.config, batch_size=1, device=self.initial_state.device
+        )
+
+        batch, seq_len = tokenised_ids.shape
+        num_chunks = math.ceil(seq_len / chunk_size)
+        for i in tqdm(range(0, seq_len, chunk_size)):
+            # print(f"chunk {i//chunk_size}/{num_chunks} of {num_chunks}")
+
+            chunk = tokenised_ids[:, i : i + chunk_size].to(self.device)
+
+            cache_params = self._build_state(
+                input_ids=chunk.to(self.device),
+                cache_params=cache_params.to(self.device),
+                model_name=model_name,
+            )
+
+            # Move the tensors back to CPU and delete them
+            chunk = chunk.to("cpu")
+            del chunk
+
+            # Clear the GPU cache
+            t.cuda.empty_cache()
+
+        metadata = SSMStateMetadata(
+            state_name=state_name,
+            prompt=prompt_reference or prompt,
+            model_name=model_name,
+            description=description,
+            keywords=tags,
+        )
+
+        return cache_params, metadata
+
+    def _build_state(
         self,
         input_ids: t.Tensor,
         cache_params: Optional[MambaCache] = None,
@@ -183,7 +248,12 @@ class StatefulModel(PreTrainedModel):
             model_name = self.model_name
         assert model_name is not None
 
-        out: MambaCausalLMOutput = self.forward(input_ids=input_ids, cache_params=cache_params)
+        # print("about to forward")
+        with t.no_grad():
+            out: MambaCausalLMOutput = self.forward(
+                input_ids=input_ids, cache_params=cache_params
+            )
+
         assert out.cache_params is not None
 
         mamba_cache = MambaCache.from_hf_cache(
@@ -331,7 +401,10 @@ class StatefulModel(PreTrainedModel):
 
     def reset_state(self) -> None:
         device = self.initial_state.device
-        self.initial_state = MambaCache(config=self.model.config, batch_size=1, device=device)
+        dtype = self.initial_state.dtype
+        self.initial_state = MambaCache(
+            config=self.model.config, batch_size=1, device=device, dtype=dtype
+        )
 
     # HELPER METHODS
 
@@ -346,11 +419,11 @@ class StatefulModel(PreTrainedModel):
         cache_dir = cls._get_default_cache_dir() if cache_dir is None else cache_dir
         base_path = os.path.join(cache_dir, model_name_path, state_name_path)
 
-        os.makedirs(base_path, exist_ok=False)
+        os.makedirs(base_path, exist_ok=True)
 
         byte_stream = io.BytesIO(state_bytes)
         try:
-            state = t.load(byte_stream)
+            state = t.load(byte_stream, map_location=default_device())
         except Exception as e:
             raise IOError(
                 f"Failed to parse downloaded state from bytes.",

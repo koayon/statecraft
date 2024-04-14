@@ -8,7 +8,7 @@ from transformers.models.mamba.modeling_mamba import MambaConfig
 
 class MambaCache(HFMambaCache):
     def to(self, device):
-        mamba_cache = copy.deepcopy(self)
+        mamba_cache = copy.copy(self)
 
         ssm_states = {
             layer_num: layer_cache.to(device)
@@ -25,9 +25,31 @@ class MambaCache(HFMambaCache):
 
         return mamba_cache
 
+    def to_dtype(self, dtype):
+        mamba_cache = copy.copy(self)
+
+        ssm_states = {
+            layer_num: layer_cache.to(dtype)
+            for layer_num, layer_cache in mamba_cache.ssm_states.items()
+        }
+
+        conv_states = {
+            layer_num: layer_cache.to(dtype)
+            for layer_num, layer_cache in mamba_cache.conv_states.items()
+        }
+
+        mamba_cache.ssm_states = ssm_states
+        mamba_cache.conv_states = conv_states
+
+        return mamba_cache
+
     @property
     def device(self):
         return self.ssm_states[0].device
+
+    # @property
+    # def dtype(self):
+    #     return self.ssm_states[0].dtype
 
     # def __iadd__(self, other: "MambaCache"):
     #     for layer_num, layer_cache in self.ssm_states.items():

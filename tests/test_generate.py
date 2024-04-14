@@ -20,6 +20,7 @@ def test_generate(tensor_input_ids, state):
     print("Generation 1")
     out: t.LongTensor = model.generate(tensor_input_ids, max_length=10, num_return_sequences=1, do_sample=False)  # type: ignore
     assert out.shape == (1, 10)
+    print(tokeniser.decode(out[0], skip_special_tokens=True))
 
     # Test that the model outputs change given the state even when greedy decoding
 
@@ -29,3 +30,4 @@ def test_generate(tensor_input_ids, state):
     stateless_out: t.LongTensor = stateless_model.generate(tensor_input_ids, max_length=10, num_return_sequences=1, do_sample=False)  # type: ignore
 
     assert not t.equal(stateless_out, out)
+    print(tokeniser.decode(stateless_out[0], skip_special_tokens=True))

@@ -32,8 +32,8 @@ transformers = "^4.39.3"
 typer = "^0.7.0"
 accelerate = "^0.29.1"
 torch = "^2.2.2"
-causal-conv1d = "^1.2.0"
-mamba-ssm = "^1.2.0"
+# causal-conv1d = "^1.2.0"
+# mamba-ssm = "^1.2.0"
 
 
 [tool.poetry.group.dev.dependencies]

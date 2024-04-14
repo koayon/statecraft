@@ -2,7 +2,7 @@
 
 ## TL;DR
 
-With statecraft you can easily load states from a file or from the community repository and use them in your SSMs or stateful models. The interface is just like Huggingface's Transformers library:
+With statecraft you can easily load states from a file or from the [community repository](https://www.statecrafthub.com/) and use them in your SSMs or stateful models. The interface is just like Huggingface's Transformers library:
 
 ```python
 from statecraft import StatefulModel
@@ -14,6 +14,32 @@ model = StatefulModel.from_pretrained(
 ```
 
 Now with every forward pass you get the knowledge from the state you loaded. And because StatefulModel inherits from Huggingface's `PreTrainedModel`, you can use it just like any other Huggingface model.
+
+## Quick Start
+
+Here's an example of loading a state built from the start of the wikipedia page for the Mamba snake and asking the model to add a summary:
+
+```python
+model = StatefulModel.from_pretrained(
+    model_name="state-spaces/mamba-2.8b-hf",
+    initial_state_name="jeremy1/mamba_wiki_state",
+)
+
+tokeniser = AutoTokenizer.from_pretrained("state-spaces/mamba-2.8b-hf")
+prompt = "In summary,"
+input_ids = tokeniser(prompt, return_tensors="pt")["input_ids"]
+
+output_tokens = model.generate(input_ids=input_ids, do_sample=False)
+print(tokeniser.decode(output_tokens[0]))
+```
+
+returns:
+
+```
+In summary, the black mamba is the most venomous snake in the world, with a venom that is more than 100 times more toxic than that of the cobra.
+```
+
+Note that our prompt contains nothing about Mamba, all the information about Mamba comes from the state we loaded.
 
 ## 🧑‍💻 Installation
 

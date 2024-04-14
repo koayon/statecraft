@@ -23,7 +23,7 @@ classifiers = [
 Repository = "https://github.com/koayon/statecraft.git"
 
 [tool.poetry.dependencies]
-einops= "^0.6.1"
+einops= ">=0.6.1,<0.8.0"
 pydantic = "^2.5.3"
 python = "^3.8"
 python-dotenv = "^0.19.1"

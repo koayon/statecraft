@@ -36,10 +36,11 @@ print(tokeniser.decode(output_tokens[0]))
 returns:
 
 ```
-In summary, the black mamba is the most venomous snake in the world, with a venom that is more than 100 times more toxic than that of the cobra.
+In summary, the black mamba is the most venomous snake in the world, with
+a venom that is more than 100 times more toxic than that of the cobra.
 ```
 
-Note that our prompt contains nothing about Mamba, all the information about Mamba comes from the state we loaded.
+Note that our prompt contains nothing about snakes, all this information comes from the state we loaded.
 
 ## 🧑‍💻 Installation
 

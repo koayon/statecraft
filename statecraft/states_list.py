@@ -40,6 +40,18 @@ def _list_server_states(model_name: str) -> list[str]:
 
 
 def show_available_states(model_name: str, cache_dir: Optional[str] = None) -> None:
+    """Shows all the available states for a given model,
+    both locally and on the Statecraft Hub.
+
+    Parameters
+    ----------
+    model_name : str
+        The name of the model to list states for. This is a Hugging Face model name.
+    cache_dir : Optional[str], optional
+        The directory where you're storing model states.
+        If not provided, the default cache directory is used.
+        , by default None
+    """
     local_states = _list_local_states(model_name, cache_dir)
     server_states = _list_server_states(model_name)
 

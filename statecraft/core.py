@@ -398,6 +398,26 @@ class StatefulModel(PreTrainedModel):
     def combine_states(
         cls, states: list[MambaCache], weights: Optional[list[float]] = None
     ) -> MambaCache:
+        """Combines two or more states into a single state by taking a weighted average of the state tensors.
+        Ordinarily, the weights should sum to 1 in this linear combination.
+
+        Parameters
+        ----------
+        states : list[MambaCache]
+            A list of states to combine.
+        weights : Optional[list[float]], optional
+            Optionally specify weightings for the states.
+            If not set, the result will be the mean,
+            by default None
+
+        Returns
+        -------
+        output_cache: MambaCache
+
+        Raises
+        ------
+        ValueError
+        """
         num_states_to_combine = len(states)
 
         if num_states_to_combine == 1:

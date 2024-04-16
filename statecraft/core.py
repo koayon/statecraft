@@ -234,9 +234,37 @@ class StatefulModel(PreTrainedModel):
         model_name: str,
         initial_state_name: Optional[str] = None,
         device: Optional[str] = None,
+        **kwargs,
     ) -> "StatefulModel":
+        """Initialise a StatefulModel from a Hugging Face model with an optional initial state.
+        You can pass in any additional arguments that you would pass to `AutoModel.from_pretrained`.
+
+        If the either the model or state have been downloaded before they will be collected from the local cache.
+        Otherwise, they will be downloaded from the Hugging Face and Statecraft Hubs respectively.
+
+        Parameters
+        ----------
+        model_name : str
+            The name of the model to load. This is a Hugging Face model name.
+        initial_state_name : Optional[str], optional
+            The short name of the state.
+            If the state was built and saved by the current user, you can just write the state_name.
+            If the state was downloaded from the Statecraft Hub, you should write the full state_name as it appears on the Statecraft Hub
+            e.g. `user_name/state_name`
+
+            , by default None
+        device : Optional[str], optional
+            The device that the model and state are loaded onto -
+            typically `cuda`, `cuda:n`, `cpu` or `mps`
+            If not provided, the model will be loaded onto the default device.
+            , by default None
+
+        Returns
+        -------
+        model: StatefulModel
+        """
         # Load model from Hugging Face
-        model: MambaForCausalLM = MambaForCausalLM.from_pretrained(model_name, device_map=device)  # type: ignore
+        model: MambaForCausalLM = MambaForCausalLM.from_pretrained(model_name, device_map=device, **kwargs)  # type: ignore
 
         # Load initial state
         if initial_state_name is not None:

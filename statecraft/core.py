@@ -145,6 +145,27 @@ def upload_state(path: Union[Path, str], model_name: str) -> None:
 
 
 class StatefulModel(PreTrainedModel):
+    """
+    StatefulModels are the core object in Statecraft.
+    The StatefulModel class is a wrapper around a Hugging Face model that allows for the loading and saving of states.
+    It is designed to be used with models that have a stateful component, such as a SSMs like Mamba.
+
+    The advised way to create a StatefulModel is to use the `from_pretrained` method,
+    just like if you were loading a Hugging Face model.
+
+    Args
+    ----------
+    model : MambaForCausalLM
+        The Hugging Face model to wrap.
+    initial_state : Optional[MambaCache]
+        The initial state of the model. This is the state that the model will start from when generating text.
+        If not provided, the model will start from its default state.
+    device : Optional[str], optional
+        The device to run the model on, by default None
+    model_name : Optional[str], optional
+        The name of the model. This is a Hugging Face model name.
+    """
+
     def __init__(
         self,
         model: MambaForCausalLM,

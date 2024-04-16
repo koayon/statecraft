@@ -602,6 +602,13 @@ class StatefulModel(PreTrainedModel):
         self.update_state(state)
 
     def update_state(self, state: MambaCache) -> None:
+        """Update the model's internal state to the provided state.
+
+        Parameters
+        ----------
+        state : MambaCache
+            The state to update the model with.
+        """
         self.initial_state = state
 
     def reset_state(self) -> None:

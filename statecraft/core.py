@@ -251,7 +251,6 @@ class StatefulModel(PreTrainedModel):
             If the state was built and saved by the current user, you can just write the state_name.
             If the state was downloaded from the Statecraft Hub, you should write the full state_name as it appears on the Statecraft Hub
             e.g. `user_name/state_name`
-
             , by default None
         device : Optional[str], optional
             The device that the model and state are loaded onto -
@@ -495,15 +494,33 @@ class StatefulModel(PreTrainedModel):
         cls,
         state: MambaCache,
         metadata: SSMStateMetadata,
-        path: Optional[Union[Path, str]] = None,
+        state_name_path: Optional[Union[Path, str]] = None,
         cache_dir: Optional[str] = None,
     ) -> None:
+        """Save the state to disk for reuse.
+
+        Parameters
+        ----------
+        state : MambaCache
+            The state to save.
+        metadata : SSMStateMetadata
+            The metadata for the state, created when the state was built.
+        path : Optional[Union[Path, str]], optional
+            A short state name which determines where the state will be saved.
+            If not specified we use the state_name in the metadata, by default None
+        cache_dir : Optional[str], optional
+            The directory where you're storing model states.
+            If not provided, the default cache directory is used.
+            , by default None
+        """
         if cache_dir is None:
             cache_dir = cls._get_default_cache_dir()
         # Create path to save_location
-        if path is None:
-            path = metadata.state_name
-        base_path = os.path.join(cache_dir, metadata.model_name, "CURRENT_USER", Path(path))
+        if state_name_path is None:
+            state_name_path = metadata.state_name
+        base_path = os.path.join(
+            cache_dir, metadata.model_name, "CURRENT_USER", Path(state_name_path)
+        )
 
         # Create the cache directory if it doesn't exist
         os.makedirs(base_path, exist_ok=True)

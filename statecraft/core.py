@@ -33,6 +33,36 @@ def get_cached_state(
     state_username: str = "CURRENT_USER",
     cache_dir: Optional[str] = None,
 ) -> tuple[MambaCache, SSMStateMetadata, str]:
+    """
+    Load a cached state from the local cache.
+
+    Parameters
+    ----------
+    saved_state_name : Union[Path, str]
+        The short name of the state, the path where it is saved.
+    model_name : str
+       The name of the model that the state was created for. This is a Hugging Face model name.
+    state_username : str, optional
+        Leave blank if the state was built and saved by the current user.
+        For states downloaded from the Statecraft Hub, this is the username of the user who uploaded the state.
+        by default "CURRENT_USER"
+    cache_dir : Optional[str], optional
+        The directory where you're storing model states.
+        If not provided, the default cache directory is used.
+        , by default None
+
+    Returns
+    -------
+    state: MambaCache
+    metadata: SSMStateMetadata
+    base_path: str
+
+    Raises
+    ------
+    CantFindLocalStateError
+    CorruptedMetadataError
+    ValueError
+    """
     if cache_dir is None:
         cache_dir = StatefulModel._get_default_cache_dir()
 
@@ -76,6 +106,26 @@ def get_cached_state(
 
 
 def upload_state(path: Union[Path, str], model_name: str) -> None:
+    """Upload a state to the [Statecraft Hub](https://www.statecrafthub.com/).
+    This will make the state available for others to download and use.
+
+    You should be logged in to your Statecraft account to upload states.
+
+    Thanks for contributing to the community!
+
+    Parameters
+    ----------
+    path : Union[Path, str]
+        The short state_name representing the path to the state you want to upload.
+        If you're not sure what the state was called run
+        `statecraft.show_available_states(model_name)` to see the available states.
+    model_name : str
+        The name of the model that the state was created for. This is a Hugging Face model name.
+
+    Raises
+    ------
+    ValueError
+    """
     _state, metadata, base_path = get_cached_state(path, model_name)
 
     if metadata.model_name != model_name:
@@ -95,6 +145,27 @@ def upload_state(path: Union[Path, str], model_name: str) -> None:
 
 
 class StatefulModel(PreTrainedModel):
+    """
+    StatefulModels are the core object in Statecraft.
+    The StatefulModel class is a wrapper around a Hugging Face model that allows for the loading and saving of states.
+    It is designed to be used with models that have a stateful component, such as a SSMs like Mamba.
+
+    The advised way to create a StatefulModel is to use the `from_pretrained` method,
+    just like if you were loading a Hugging Face model.
+
+    Args
+    ----------
+    model : MambaForCausalLM
+        The Hugging Face model to wrap.
+    initial_state : Optional[MambaCache]
+        The initial state of the model. This is the state that the model will start from when generating text.
+        If not provided, the model will start from its default state.
+    device : Optional[str], optional
+        The device to run the model on, by default None
+    model_name : Optional[str], optional
+        The name of the model. This is a Hugging Face model name.
+    """
+
     def __init__(
         self,
         model: MambaForCausalLM,
@@ -163,9 +234,36 @@ class StatefulModel(PreTrainedModel):
         model_name: str,
         initial_state_name: Optional[str] = None,
         device: Optional[str] = None,
+        **kwargs,
     ) -> "StatefulModel":
+        """Initialise a StatefulModel from a Hugging Face model with an optional initial state.
+        You can pass in any additional arguments that you would pass to `AutoModel.from_pretrained`.
+
+        If the either the model or state have been downloaded before they will be collected from the local cache.
+        Otherwise, they will be downloaded from the Hugging Face and Statecraft Hubs respectively.
+
+        Parameters
+        ----------
+        model_name : str
+            The name of the model to load. This is a Hugging Face model name.
+        initial_state_name : Optional[str], optional
+            The short name of the state.
+            If the state was built and saved by the current user, you can just write the state_name.
+            If the state was downloaded from the Statecraft Hub, you should write the full state_name as it appears on the Statecraft Hub
+            e.g. `user_name/state_name`
+            , by default None
+        device : Optional[str], optional
+            The device that the model and state are loaded onto -
+            typically `cuda`, `cuda:n`, `cpu` or `mps`
+            If not provided, the model will be loaded onto the default device.
+            , by default None
+
+        Returns
+        -------
+        model: StatefulModel
+        """
         # Load model from Hugging Face
-        model: MambaForCausalLM = MambaForCausalLM.from_pretrained(model_name, device_map=device)  # type: ignore
+        model: MambaForCausalLM = MambaForCausalLM.from_pretrained(model_name, device_map=device, **kwargs)  # type: ignore
 
         # Load initial state
         if initial_state_name is not None:
@@ -189,6 +287,40 @@ class StatefulModel(PreTrainedModel):
         prompt_reference: Optional[str] = None,
         chunk_size: int = 256,
     ) -> tuple[MambaCache, SSMStateMetadata]:
+        """Build a state from a prompt in order to reuse or share it.
+
+        The state is built chunk by chunk so even prompts which are too long to fit in memory can be used.
+
+        Parameters
+        ----------
+        state_name : str
+            Choose a short name for the state, used for the path and for uploads, if you decide to save it.
+        prompt : str
+            The prompt to generate the state from.
+        description : Optional[str], optional
+            A description of the state that can be used to understand the context of the state or when to use it, by default None
+        tags : Optional[list[str]], optional
+            Tags to filter the state by on the Statecraft Hub, by default None
+        cache_params : Optional[MambaCache], optional
+            An initial state to start building this new state from, by default None
+        model_name : Optional[str], optional
+            The name of the model that the state was created for. This is a Hugging Face model name.
+            If none, the model_name of the StatefulModel is used
+            , by default None
+        prompt_reference : Optional[str], optional
+            For long prompts (over 1000 tokens say), you can save a url as a reference to the prompt here and save that in your metadata rather than the long prompt itself, by default None
+        chunk_size : int, optional
+            The chunk size used when building the state. You should increase this as your hardware allows, by default 256
+
+        Returns
+        -------
+        cache_params: MambaCache
+        metadata: SSMStateMetadata
+
+        Raises
+        ------
+        ValueError
+        """
         # Check if model_name is provided
         model_name = model_name or self.model_name
         if model_name is None:
@@ -265,6 +397,26 @@ class StatefulModel(PreTrainedModel):
     def combine_states(
         cls, states: list[MambaCache], weights: Optional[list[float]] = None
     ) -> MambaCache:
+        """Combines two or more states into a single state by taking a weighted average of the state tensors.
+        Ordinarily, the weights should sum to 1 in this linear combination.
+
+        Parameters
+        ----------
+        states : list[MambaCache]
+            A list of states to combine.
+        weights : Optional[list[float]], optional
+            Optionally specify weightings for the states.
+            If not set, the result will be the mean,
+            by default None
+
+        Returns
+        -------
+        output_cache: MambaCache
+
+        Raises
+        ------
+        ValueError
+        """
         num_states_to_combine = len(states)
 
         if num_states_to_combine == 1:
@@ -273,7 +425,7 @@ class StatefulModel(PreTrainedModel):
             raise ValueError("No states provided to combine.")
 
         original_dtype = states[0].dtype
-        batch_size, intemediate_size, ssm_state_size = states[0].ssm_states[0].shape
+        batch_size, intermediate_size, ssm_state_size = states[0].ssm_states[0].shape
         num_layers = len(states[0].conv_states)
 
         # Check if all states are compatible
@@ -342,15 +494,33 @@ class StatefulModel(PreTrainedModel):
         cls,
         state: MambaCache,
         metadata: SSMStateMetadata,
-        path: Optional[Union[Path, str]] = None,
+        state_name_path: Optional[Union[Path, str]] = None,
         cache_dir: Optional[str] = None,
     ) -> None:
+        """Save the state to disk for reuse.
+
+        Parameters
+        ----------
+        state : MambaCache
+            The state to save.
+        metadata : SSMStateMetadata
+            The metadata for the state, created when the state was built.
+        path : Optional[Union[Path, str]], optional
+            A short state name which determines where the state will be saved.
+            If not specified we use the state_name in the metadata, by default None
+        cache_dir : Optional[str], optional
+            The directory where you're storing model states.
+            If not provided, the default cache directory is used.
+            , by default None
+        """
         if cache_dir is None:
             cache_dir = cls._get_default_cache_dir()
         # Create path to save_location
-        if path is None:
-            path = metadata.state_name
-        base_path = os.path.join(cache_dir, metadata.model_name, "CURRENT_USER", Path(path))
+        if state_name_path is None:
+            state_name_path = metadata.state_name
+        base_path = os.path.join(
+            cache_dir, metadata.model_name, "CURRENT_USER", Path(state_name_path)
+        )
 
         # Create the cache directory if it doesn't exist
         os.makedirs(base_path, exist_ok=True)
@@ -368,6 +538,22 @@ class StatefulModel(PreTrainedModel):
         print(f"Metadata saved to {metadata_path}")
 
     def save_current_state(self, state_name: str, prompt: str) -> None:
+        """Saves the current model state.
+
+        Recommended to instead use `build_state` to save a state from a prompt
+        and `save_state` to save a state with the metadata.
+
+        Parameters
+        ----------
+        state_name : str
+            The short name of the state.
+        prompt : str
+            The prompt used to generate the state from.
+
+        Raises
+        ------
+        ValueError
+        """
         if self.model_name is None:
             raise ValueError(
                 "Method .save_current_state(...) requires the model_name to be set.",
@@ -384,7 +570,26 @@ class StatefulModel(PreTrainedModel):
 
     # STATE LOADING
 
-    def load_state(self, path: str, cache_dir: Optional[str] = None) -> None:
+    def load_state(self, state_name_path: str, cache_dir: Optional[str] = None) -> None:
+        """Load a state from disk or from the Statecraft Hub into the model's internal state.
+
+
+        Parameters
+        ----------
+        state_name_path : str
+            The short name of the state.
+            If the state was built and saved by the current user, you can just write the state_name.
+            If the state was downloaded from the Statecraft Hub, you should write the full state_name as it appears on the Statecraft Hub,
+            e.g. `user_name/state_name`
+        cache_dir : Optional[str], optional
+            The directory where you're storing model states.
+            If not provided, the default cache directory is used.
+            , by default None
+
+        Raises
+        ------
+        ValueError
+        """
         if self.model_name is None:
             raise ValueError(
                 "Method .load_state(...) requires the model_name to be set.",
@@ -392,14 +597,22 @@ class StatefulModel(PreTrainedModel):
                 "Otherwise you can set it manually",
             )
         state = self._load_state(
-            model_name=self.model_name, state_name_path=path, cache_dir=cache_dir
+            model_name=self.model_name, state_name_path=state_name_path, cache_dir=cache_dir
         )
         self.update_state(state)
 
     def update_state(self, state: MambaCache) -> None:
+        """Update the model's internal state to the provided state.
+
+        Parameters
+        ----------
+        state : MambaCache
+            The state to update the model with.
+        """
         self.initial_state = state
 
     def reset_state(self) -> None:
+        """Reset the state of the model to the default state."""
         device = self.initial_state.device
         dtype = self.initial_state.dtype
         self.initial_state = MambaCache(

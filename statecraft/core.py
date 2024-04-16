@@ -33,6 +33,36 @@ def get_cached_state(
     state_username: str = "CURRENT_USER",
     cache_dir: Optional[str] = None,
 ) -> tuple[MambaCache, SSMStateMetadata, str]:
+    """
+    Load a cached state from the local cache.
+
+    Parameters
+    ----------
+    saved_state_name : Union[Path, str]
+        The short name of the state, the path where it is saved.
+    model_name : str
+       The name of the model that the state was created for. This is a Hugging Face model name.
+    state_username : str, optional
+        Leave blank if the state was built and saved by the current user.
+        For states downloaded from the Statecraft Hub, this is the username of the user who uploaded the state.
+        by default "CURRENT_USER"
+    cache_dir : Optional[str], optional
+        The directory where you're storing model states.
+        If not provided, the default cache directory is used.
+        , by default None
+
+    Returns
+    -------
+    state: MambaCache
+    metadata: SSMStateMetadata
+    base_path: str
+
+    Raises
+    ------
+    CantFindLocalStateError
+    CorruptedMetadataError
+    ValueError
+    """
     if cache_dir is None:
         cache_dir = StatefulModel._get_default_cache_dir()
 

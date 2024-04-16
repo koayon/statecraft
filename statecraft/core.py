@@ -538,6 +538,23 @@ class StatefulModel(PreTrainedModel):
         print(f"Metadata saved to {metadata_path}")
 
     def save_current_state(self, state_name: str, prompt: str) -> None:
+        """Saves the current model state.
+
+        Recommended to instead use `build_state` to save a state from a prompt
+        and `save_state` to save a state with the metadata.
+
+        Parameters
+        ----------
+        state_name : str
+            The short name of the state.
+        prompt : str
+            The prompt used to generate the state from.
+
+        Raises
+        ------
+        ValueError
+            _description_
+        """
         if self.model_name is None:
             raise ValueError(
                 "Method .save_current_state(...) requires the model_name to be set.",

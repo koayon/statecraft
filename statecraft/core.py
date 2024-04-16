@@ -106,6 +106,26 @@ def get_cached_state(
 
 
 def upload_state(path: Union[Path, str], model_name: str) -> None:
+    """Upload a state to the [Statecraft Hub](https://www.statecrafthub.com/).
+    This will make the state available for others to download and use.
+
+    You should be logged in to your Statecraft account to upload states.
+
+    Thanks for contributing to the community!
+
+    Parameters
+    ----------
+    path : Union[Path, str]
+        The short state_name representing the path to the state you want to upload.
+        If you're not sure what the state was called run
+        `statecraft.show_available_states(model_name)` to see the available states.
+    model_name : str
+        The name of the model that the state was created for. This is a Hugging Face model name.
+
+    Raises
+    ------
+    ValueError
+    """
     _state, metadata, base_path = get_cached_state(path, model_name)
 
     if metadata.model_name != model_name:

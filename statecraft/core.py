@@ -288,6 +288,40 @@ class StatefulModel(PreTrainedModel):
         prompt_reference: Optional[str] = None,
         chunk_size: int = 256,
     ) -> tuple[MambaCache, SSMStateMetadata]:
+        """Build a state from a prompt in order to reuse or share it.
+
+        The state is built chunk by chunk so even prompts which are too long to fit in memory can be used.
+
+        Parameters
+        ----------
+        state_name : str
+            Choose a short name for the state, used for the path and for uploads, if you decide to save it.
+        prompt : str
+            The prompt to generate the state from.
+        description : Optional[str], optional
+            A description of the state that can be used to understand the context of the state or when to use it, by default None
+        tags : Optional[list[str]], optional
+            Tags to filter the state by on the Statecraft Hub, by default None
+        cache_params : Optional[MambaCache], optional
+            An initial state to start building this new state from, by default None
+        model_name : Optional[str], optional
+            The name of the model that the state was created for. This is a Hugging Face model name.
+            If none, the model_name of the StatefulModel is used
+            , by default None
+        prompt_reference : Optional[str], optional
+            For long prompts (over 1000 tokens say), you can save a url as a reference to the prompt here and save that in your metadata rather than the long prompt itself, by default None
+        chunk_size : int, optional
+            The chunk size used when building the state. You should increase this as your hardware allows, by default 256
+
+        Returns
+        -------
+        cache_params: MambaCache
+        metadata: SSMStateMetadata
+
+        Raises
+        ------
+        ValueError
+        """
         # Check if model_name is provided
         model_name = model_name or self.model_name
         if model_name is None:
@@ -372,7 +406,7 @@ class StatefulModel(PreTrainedModel):
             raise ValueError("No states provided to combine.")
 
         original_dtype = states[0].dtype
-        batch_size, intemediate_size, ssm_state_size = states[0].ssm_states[0].shape
+        batch_size, intermediate_size, ssm_state_size = states[0].ssm_states[0].shape
         num_layers = len(states[0].conv_states)
 
         # Check if all states are compatible

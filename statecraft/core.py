@@ -553,7 +553,6 @@ class StatefulModel(PreTrainedModel):
         Raises
         ------
         ValueError
-            _description_
         """
         if self.model_name is None:
             raise ValueError(
@@ -571,7 +570,26 @@ class StatefulModel(PreTrainedModel):
 
     # STATE LOADING
 
-    def load_state(self, path: str, cache_dir: Optional[str] = None) -> None:
+    def load_state(self, state_name_path: str, cache_dir: Optional[str] = None) -> None:
+        """Load a state from disk or from the Statecraft Hub into the model's internal state.
+
+
+        Parameters
+        ----------
+        state_name_path : str
+            The short name of the state.
+            If the state was built and saved by the current user, you can just write the state_name.
+            If the state was downloaded from the Statecraft Hub, you should write the full state_name as it appears on the Statecraft Hub,
+            e.g. `user_name/state_name`
+        cache_dir : Optional[str], optional
+            The directory where you're storing model states.
+            If not provided, the default cache directory is used.
+            , by default None
+
+        Raises
+        ------
+        ValueError
+        """
         if self.model_name is None:
             raise ValueError(
                 "Method .load_state(...) requires the model_name to be set.",
@@ -579,7 +597,7 @@ class StatefulModel(PreTrainedModel):
                 "Otherwise you can set it manually",
             )
         state = self._load_state(
-            model_name=self.model_name, state_name_path=path, cache_dir=cache_dir
+            model_name=self.model_name, state_name_path=state_name_path, cache_dir=cache_dir
         )
         self.update_state(state)
 

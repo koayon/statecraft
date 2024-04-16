@@ -612,6 +612,7 @@ class StatefulModel(PreTrainedModel):
         self.initial_state = state
 
     def reset_state(self) -> None:
+        """Reset the state of the model to the default state."""
         device = self.initial_state.device
         dtype = self.initial_state.dtype
         self.initial_state = MambaCache(

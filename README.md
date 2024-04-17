@@ -35,7 +35,7 @@ print(tokeniser.decode(output_tokens[0]))
 
 returns:
 
-```
+```text
 In summary, the black mamba is the most venomous snake in the world, with
 a venom that is more than 100 times more toxic than that of the cobra.
 ```
@@ -59,6 +59,17 @@ pip install statecraft
 
 - Right now we only support Mamba models (in all sizes), as more SSMs and Stateful models begin to come onto Huggingface, we will support them too.
 - We're also looking at RAG-like generation approaches where you automatically retrieve the `state` instead of `context`, watch this space 👀
+
+## ❔ What Is A Stateful Model?
+
+A Stateful Model is a class of models that have a finite state which contains information from previous tokens in the context window. SSMs are the paradigmatic example but hybrid models also fall into this category.
+
+Examples of Stateful Models include:
+
+- [Mamba](https://huggingface.co/docs/transformers/en/model_doc/mamba)
+- (Striped) [Hyena](https://www.together.ai/blog/stripedhyena-7b)
+- Mamba hybrids like [Jamba](https://www.ai21.com/jamba) and [Zamba](https://www.zyphra.com/zamba)
+- [RecurrentGemma](https://huggingface.co/docs/transformers/main/en/model_doc/recurrent_gemma) ([Griffin](https://arxiv.org/abs/2402.19427v1))
 
 ## 🧙 Conceptually
 
@@ -88,7 +99,6 @@ For more details see [here](https://www.kolaayonrinde.com/blog/2024/02/11/mamba.
 
 We welcome contributions to the statecraft library!
 And of course, please contribute your SSM states with `statecraft.upload_state(...)` 🪄
-
 
 ---
 
